@@ -1,8 +1,7 @@
-
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { FaPaw, FaUser, FaSun, FaMoon, FaBars, FaTimes } from 'react-icons/fa';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { FaPaw, FaUser, FaSun, FaMoon, FaBars, FaTimes } from "react-icons/fa";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -12,31 +11,37 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/');
+    navigate("/");
   };
 
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
-    document.documentElement.classList.toggle('dark');
+    document.documentElement.classList.toggle("dark");
   };
 
-  const navLinks = user ? [
-    { name: 'Home', path: '/' },
-    { name: 'Pets & Supplies', path: '/pets-supplies' },
-    { name: 'Add Listing', path: '/add-listing' },
-    { name: 'My Listings', path: '/my-listings' },
-    { name: 'My Orders', path: '/my-orders' }
-  ] : [
-    { name: 'Home', path: '/' },
-    { name: 'Pets & Supplies', path: '/pets-supplies' }
-  ];
+  const navLinks = user
+    ? [
+        { name: "Home", path: "/" },
+        { name: "Pets & Supplies", path: "/pets-supplies" },
+        { name: "Add Listing", path: "/add-listing" },
+        { name: "My Listings", path: "/my-listings" },
+        { name: "My Orders", path: "/my-orders" },
+      ]
+    : [
+        { name: "Home", path: "/" },
+        { name: "Pets & Supplies", path: "/pets-supplies" },
+      ];
 
   return (
     <nav className="bg-gradient-to-r from-purple-600 to-pink-500 dark:from-gray-800 dark:to-gray-900 text-white shadow-lg">
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 text-2xl font-bold">
+          <Link
+            to="/"
+            className="flex items-center space-x-2 text-2xl font-bold"
+          >
+            {/* <FaPaw className="text-3xl" /> */}
             <FaPaw className="text-3xl" />
             <span>PawMart</span>
           </Link>
@@ -69,11 +74,13 @@ const Navbar = () => {
               <div className="hidden md:flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
                   <img
-                    src={user.photoURL || 'https://via.placeholder.com/150'}
+                    src={user.photoURL || "https://via.placeholder.com/150"}
                     alt={user.displayName}
                     className="w-8 h-8 rounded-full border-2 border-white"
                   />
-                  <span className="font-medium">{user.displayName?.split(' ')[0]}</span>
+                  <span className="font-medium">
+                    {user.displayName?.split(" ")[0]}
+                  </span>
                 </div>
                 <button
                   onClick={handleLogout}
