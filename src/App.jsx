@@ -5,7 +5,7 @@ import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
-import PetsSupplies from './pages/PetsSupplies';
+import PetsSupplies from './pages/PetsSupplies'; 
 import AddListing from './pages/AddListing';
 import MyListings from './pages/MyListings';
 import MyOrders from './pages/MyOrders';
