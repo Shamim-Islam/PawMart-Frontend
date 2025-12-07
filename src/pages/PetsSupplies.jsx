@@ -1,11 +1,16 @@
-
-import React, { useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FaSearch, FaFilter, FaTimes, FaMapMarkerAlt, FaTag } from 'react-icons/fa';
-import ListingCard from '../components/ListingCard';
-import LoadingSpinner from '../components/LoadingSpinner';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  FaSearch,
+  FaFilter,
+  FaTimes,
+  FaMapMarkerAlt,
+  FaTag,
+} from "react-icons/fa";
+import ListingCard from "../components/ListingCard";
+import LoadingSpinner from "../components/LoadingSpinner";
+import toast from "react-hot-toast";
 
 const PetsSupplies = () => {
   const { categoryName } = useParams();
@@ -13,17 +18,17 @@ const PetsSupplies = () => {
   const [listings, setListings] = useState([]);
   const [filteredListings, setFilteredListings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [priceRange, setPriceRange] = useState([0, 10000]);
   const [showFilters, setShowFilters] = useState(false);
 
   const categories = [
-    { value: 'all', label: 'All Categories', icon: '📦' },
-    { value: 'pets', label: 'Pets (Adoption)', icon: '🐶' },
-    { value: 'food', label: 'Pet Food', icon: '🍖' },
-    { value: 'accessories', label: 'Accessories', icon: '🧸' },
-    { value: 'care', label: 'Care Products', icon: '💊' }
+    { value: "all", label: "All Categories", icon: "📦" },
+    { value: "pets", label: "Pets (Adoption)", icon: "🐶" },
+    { value: "food", label: "Pet Food", icon: "🍖" },
+    { value: "accessories", label: "Accessories", icon: "🧸" },
+    { value: "care", label: "Care Products", icon: "💊" },
   ];
 
   useEffect(() => {
@@ -47,22 +52,104 @@ const PetsSupplies = () => {
       // Simulate API call
       setTimeout(() => {
         const mockListings = [
-          { id: 1, name: "Golden Retriever Puppy", category: "Pets", price: 0, location: "Dhaka", image: "https://images.unsplash.com/photo-1596492784531-6e6eb5ea9993?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80", description: "Friendly 2-month-old puppy looking for a loving home." },
-          { id: 2, name: "Premium Dog Food", category: "Food", price: 1200, location: "Chattogram", image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80", description: "High-quality dog food for all breeds." },
-          { id: 3, name: "Pet Carrier Bag", category: "Accessories", price: 2500, location: "Sylhet", image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80", description: "Comfortable pet carrier for travel." },
-          { id: 4, name: "Cat Litter Box", category: "Care", price: 1800, location: "Dhaka", image: "https://images.unsplash.com/photo-1573866926487-a1865558a9cf?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80", description: "Modern cat litter box with odor control." },
-          { id: 5, name: "Siamese Kitten", category: "Pets", price: 0, location: "Khulna", image: "https://images.unsplash.com/photo-1514888286974-6d03bde4ba0f?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80", description: "Beautiful Siamese kitten ready for adoption." },
-          { id: 6, name: "Dog Toys Set", category: "Accessories", price: 850, location: "Rajshahi", image: "https://images.unsplash.com/photo-1554456854-55a089fd4cb2?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80", description: "Set of 5 durable dog toys." },
-          { id: 7, name: "Fish Tank", category: "Care", price: 3500, location: "Dhaka", image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80", description: "20-gallon fish tank with filter." },
-          { id: 8, name: "Bird Cage", category: "Accessories", price: 2200, location: "Chattogram", image: "https://images.unsplash.com/photo-1522926193341-e9ffd686c60f?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80", description: "Spacious bird cage with accessories." },
-          { id: 9, name: "Rabbit Hutch", category: "Accessories", price: 4200, location: "Sylhet", image: "https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80", description: "Outdoor rabbit hutch with weather protection." }
+          {
+            id: 1,
+            name: "Golden Retriever Puppy",
+            category: "Pets",
+            price: 0,
+            location: "Dhaka",
+            image:
+              "https://images.unsplash.com/photo-1611003229186-80e40cd54966?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+            description:
+              "Friendly 2-month-old puppy looking for a loving home.",
+          },
+          {
+            id: 2,
+            name: "Premium Dog Food",
+            category: "Food",
+            price: 1200,
+            location: "Chattogram",
+            image:
+              "https://images.unsplash.com/photo-1608408891486-f5cade977d19?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+            description: "High-quality dog food for all breeds.",
+          },
+          {
+            id: 3,
+            name: "Pet Carrier Bag",
+            category: "Accessories",
+            price: 2500,
+            location: "Sylhet",
+            image:
+              "https://images.unsplash.com/photo-1608060375223-c5ab552bc9a9?q=80&w=2081&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+            description: "Comfortable pet carrier for travel.",
+          },
+          {
+            id: 4,
+            name: "Cat Litter Box",
+            category: "Care",
+            price: 1800,
+            location: "Dhaka",
+            image:
+              "https://images.unsplash.com/photo-1727510152683-a212cf8e49ad?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+            description: "Modern cat litter box with odor control.",
+          },
+          {
+            id: 5,
+            name: "Siamese Kitten",
+            category: "Pets",
+            price: 0,
+            location: "Khulna",
+            image:
+              "https://images.wagwalkingweb.com/media/daily_wag/blog_articles/hero/1678934108.5188236/everything-you-need-to-know-about-siamese-cats.png",
+            description: "Beautiful Siamese kitten ready for adoption.",
+          },
+          {
+            id: 6,
+            name: "Dog Toys Set",
+            category: "Accessories",
+            price: 850,
+            location: "Rajshahi",
+            image:
+              "https://images.unsplash.com/photo-1554456854-55a089fd4cb2?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
+            description: "Set of 5 durable dog toys.",
+          },
+          {
+            id: 7,
+            name: "Fish Tank",
+            category: "Care",
+            price: 3500,
+            location: "Dhaka",
+            image:
+              "https://images.unsplash.com/photo-1578313097818-dfe8d38aa758?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+            description: "20-gallon fish tank with filter.",
+          },
+          {
+            id: 8,
+            name: "Bird Cage",
+            category: "Accessories",
+            price: 2200,
+            location: "Chattogram",
+            image:
+              "https://plus.unsplash.com/premium_photo-1664304957188-a2f67dd1f721?q=80&w=739&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+            description: "Spacious bird cage with accessories.",
+          },
+          {
+            id: 9,
+            name: "Rabbit Hutch",
+            category: "Accessories",
+            price: 4200,
+            location: "Sylhet",
+            image:
+              "https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
+            description: "Outdoor rabbit hutch with weather protection.",
+          },
         ];
         setListings(mockListings);
         setFilteredListings(mockListings);
         setLoading(false);
       }, 1500);
     } catch (error) {
-      toast.error('Failed to load listings');
+      toast.error("Failed to load listings");
       setLoading(false);
     }
   };
@@ -72,28 +159,30 @@ const PetsSupplies = () => {
 
     // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(listing =>
-        listing.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        listing.description.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(
+        (listing) =>
+          listing.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          listing.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Filter by category
-    if (selectedCategory !== 'all') {
+    if (selectedCategory !== "all") {
       const categoryMap = {
-        'pets': 'Pets',
-        'food': 'Food',
-        'accessories': 'Accessories',
-        'care': 'Care'
+        pets: "Pets",
+        food: "Food",
+        accessories: "Accessories",
+        care: "Care",
       };
-      filtered = filtered.filter(listing => 
-        listing.category === categoryMap[selectedCategory]
+      filtered = filtered.filter(
+        (listing) => listing.category === categoryMap[selectedCategory]
       );
     }
 
     // Filter by price range
-    filtered = filtered.filter(listing =>
-      listing.price >= priceRange[0] && listing.price <= priceRange[1]
+    filtered = filtered.filter(
+      (listing) =>
+        listing.price >= priceRange[0] && listing.price <= priceRange[1]
     );
 
     setFilteredListings(filtered);
@@ -105,8 +194,8 @@ const PetsSupplies = () => {
   };
 
   const clearFilters = () => {
-    setSearchTerm('');
-    setSelectedCategory('all');
+    setSearchTerm("");
+    setSelectedCategory("all");
     setPriceRange([0, 10000]);
     setSearchParams({});
   };
@@ -125,7 +214,8 @@ const PetsSupplies = () => {
               Find Your Perfect Pet & Supplies
             </h1>
             <p className="text-xl opacity-90">
-              Browse through our collection of pets for adoption and pet care products
+              Browse through our collection of pets for adoption and pet care
+              products
             </p>
           </motion.div>
         </div>
@@ -173,7 +263,7 @@ const PetsSupplies = () => {
             {showFilters && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
+                animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700"
               >
@@ -188,10 +278,11 @@ const PetsSupplies = () => {
                         <button
                           key={cat.value}
                           onClick={() => setSelectedCategory(cat.value)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${selectedCategory === cat.value
-                              ? 'bg-blue-500 text-white'
-                              : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
-                            }`}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                            selectedCategory === cat.value
+                              ? "bg-blue-500 text-white"
+                              : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+                          }`}
                         >
                           <span>{cat.icon}</span>
                           <span>{cat.label}</span>
@@ -212,7 +303,12 @@ const PetsSupplies = () => {
                         max="10000"
                         step="100"
                         value={priceRange[0]}
-                        onChange={(e) => setPriceRange([parseInt(e.target.value), priceRange[1]])}
+                        onChange={(e) =>
+                          setPriceRange([
+                            parseInt(e.target.value),
+                            priceRange[1],
+                          ])
+                        }
                         className="w-full"
                       />
                       <input
@@ -221,7 +317,12 @@ const PetsSupplies = () => {
                         max="10000"
                         step="100"
                         value={priceRange[1]}
-                        onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
+                        onChange={(e) =>
+                          setPriceRange([
+                            priceRange[0],
+                            parseInt(e.target.value),
+                          ])
+                        }
                         className="w-full"
                       />
                     </div>
@@ -254,19 +355,20 @@ const PetsSupplies = () => {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-2xl font-bold">
-              {selectedCategory !== 'all' 
-                ? `${categories.find(c => c.value === selectedCategory)?.label}`
-                : 'All Listings'
-              }
+              {selectedCategory !== "all"
+                ? `${
+                    categories.find((c) => c.value === selectedCategory)?.label
+                  }`
+                : "All Listings"}
             </h2>
             <p className="text-gray-600 dark:text-gray-400">
               {filteredListings.length} listings found
             </p>
           </div>
           <div className="text-sm text-gray-500">
-            {selectedCategory !== 'all' && (
+            {selectedCategory !== "all" && (
               <button
-                onClick={() => setSelectedCategory('all')}
+                onClick={() => setSelectedCategory("all")}
                 className="text-blue-500 hover:text-blue-600"
               >
                 View all categories →

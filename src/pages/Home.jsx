@@ -23,7 +23,8 @@ const Home = () => {
           price: 0,
           location: "Dhaka",
           image:
-            "https://images.unsplash.com/photo-1596492784531-6e6eb5ea9993?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
+            "https://images.unsplash.com/photo-1611003229186-80e40cd54966?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+          description: "Friendly 2-month-old puppy looking for a loving home.",
         },
         {
           id: 2,
@@ -32,7 +33,8 @@ const Home = () => {
           price: 1200,
           location: "Chattogram",
           image:
-            "https://images.unsplash.com/photo-1596462502278-27bfdc403348?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
+            "https://images.unsplash.com/photo-1608408891486-f5cade977d19?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+          description: "High-quality dog food for all breeds.",
         },
         {
           id: 3,
@@ -41,7 +43,8 @@ const Home = () => {
           price: 2500,
           location: "Sylhet",
           image:
-            "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
+            "https://images.unsplash.com/photo-1608060375223-c5ab552bc9a9?q=80&w=2081&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+          description: "Comfortable pet carrier for travel.",
         },
       ]);
       setLoading(false);
@@ -92,7 +95,7 @@ const Home = () => {
       name: "Emma Wilson",
       pet: "Foster caregiver",
       image:
-        "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
+        "https://images.unsplash.com/photo-1556575533-7190b053c299?q=80&w=1954&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     },
     {
       name: "David Park",
@@ -105,7 +108,7 @@ const Home = () => {
   return (
     <div>
       {/* Banner Section - Carousel */}
-      <section className="py-4 md:py-6">
+      <section className="py-4 md:py-16 bg-[url('https://i.ibb.co.com/5gJb5BWW/bg.png')] bg-cover bg-center bg-no-repeat ">
         <div className="container mx-auto px-4">
           <Carousel />
         </div>

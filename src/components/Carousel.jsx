@@ -15,7 +15,7 @@ const Carousel = () => {
     },
     {
       id: 2,
-      image: "https://images.unsplash.com/photo-1596273315327-5f059a42b5c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=1800&q=80",
+      image: "https://i.ibb.co.com/VcWsFM4y/background-04-copyright.jpg",
       title: "Quality Pet Supplies",
       description: "Everything your pet needs - food, toys, accessories, and care products.",
       buttonText: "Shop Supplies",
