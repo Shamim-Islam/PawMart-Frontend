@@ -1,114 +1,141 @@
-
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { motion } from 'framer-motion';
-import { FaPaw, FaUpload, FaCalendarAlt, FaMapMarkerAlt, FaDollarSign } from 'react-icons/fa';
-import toast from 'react-hot-toast';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { motion } from "framer-motion";
+import {
+  FaPaw,
+  FaUpload,
+  FaCalendarAlt,
+  FaMapMarkerAlt,
+  FaDollarSign,
+} from "react-icons/fa";
+import toast from "react-hot-toast";
+import axios from "axios";
 
 const AddListing = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    category: 'Pets',
-    price: '',
-    location: '',
-    description: '',
-    image: '',
-    date: new Date().toISOString().split('T')[0]
+    name: "",
+    category: "Pets",
+    price: "",
+    location: "",
+    description: "",
+    image: "",
+    date: new Date().toISOString().split("T")[0],
   });
+  console.log(formData);
+
   const [errors, setErrors] = useState({});
 
   const categories = [
-    { value: 'Pets', label: 'Pets (Adoption)', emoji: '🐶', priceField: true },
-    { value: 'Food', label: 'Pet Food', emoji: '🍖', priceField: true },
-    { value: 'Accessories', label: 'Accessories', emoji: '🧸', priceField: true },
-    { value: 'Care', label: 'Care Products', emoji: '💊', priceField: true }
+    {
+      value: "Pets (Adoption)",
+      label: "Pets (Adoption)",
+      emoji: "🐶",
+      priceField: true,
+    },
+    { value: "Pet Food", label: "Pet Food", emoji: "🍖", priceField: true },
+    {
+      value: "Accessories",
+      label: "Accessories",
+      emoji: "🧸",
+      priceField: true,
+    },
+    {
+      value: "Pet Care Products",
+      label: "Care Products",
+      emoji: "💊",
+      priceField: true,
+    },
   ];
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
+      newErrors.name = "Name is required";
     }
-    
+
     if (!formData.location.trim()) {
-      newErrors.location = 'Location is required';
+      newErrors.location = "Location is required";
     }
-    
+
     if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
+      newErrors.description = "Description is required";
     }
-    
+
     if (!formData.image.trim()) {
-      newErrors.image = 'Image URL is required';
+      newErrors.image = "Image URL is required";
     } else if (!/^https?:\/\/.+/.test(formData.image)) {
-      newErrors.image = 'Please enter a valid image URL';
+      newErrors.image = "Please enter a valid image URL";
     }
-    
-    if (formData.category !== 'Pets') {
+
+    if (formData.category !== "Pets") {
       if (!formData.price) {
-        newErrors.price = 'Price is required';
+        newErrors.price = "Price is required";
       } else if (parseFloat(formData.price) < 0) {
-        newErrors.price = 'Price cannot be negative';
+        newErrors.price = "Price cannot be negative";
       }
     }
-    
+
     if (!formData.date) {
-      newErrors.date = 'Date is required';
+      newErrors.date = "Date is required";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: name === "price" ? Number(value) : value,
     }));
-    
-    // Clear error when user starts typing
+
     if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
-      toast.error('Please fix the errors in the form');
+      toast.error("Please fix the errors in the form");
       return;
     }
 
-    setLoading(true);
     try {
       // Prepare listing data
       const listingData = {
         ...formData,
-        price: formData.category === 'Pets' ? 0 : parseFloat(formData.price),
-        email: user.email,
-        date: formData.date
+        price:
+          formData.category.slug === "pets" ? 0 : parseFloat(formData.price),
+        date: formData.date,
+        owner: {
+          name: user?.displayName || "Unknown",
+          email: user?.email,
+          phone: user?.phoneNumber || "",
+        },
       };
 
-      // Simulate API call
-      setTimeout(() => {
-        console.log('Listing created:', listingData);
-        toast.success('Listing created successfully!');
-        navigate('/my-listings');
-        setLoading(false);
-      }, 1500);
+      setLoading(true);
 
+      const res = await axios.post(
+        "http://localhost:5000/api/listing",
+        listingData
+      );
+
+      toast.success("Listing created successfully!");
+      navigate("/my-listings");
     } catch (error) {
-      toast.error('Failed to create listing');
+      toast.error("Failed to create listing");
+      setLoading(false);
+    } finally {
       setLoading(false);
     }
   };
@@ -127,7 +154,9 @@ const AddListing = () => {
               <FaPaw className="text-4xl" />
             </div>
             <h1 className="text-3xl font-bold mb-2">Add New Listing</h1>
-            <p className="opacity-90">Share your pet or pet product with the community</p>
+            <p className="opacity-90">
+              Share your pet or pet product with the community
+            </p>
           </div>
 
           {/* Form */}
@@ -143,10 +172,16 @@ const AddListing = () => {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border ${errors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white`}
+                  className={`w-full px-4 py-3 border ${
+                    errors.name
+                      ? "border-red-500"
+                      : "border-gray-300 dark:border-gray-600"
+                  } rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white`}
                   placeholder="Enter name (e.g., 'Golden Retriever Puppy')"
                 />
-                {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                {errors.name && (
+                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                )}
               </div>
 
               {/* Category & Price */}
@@ -171,7 +206,9 @@ const AddListing = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {formData.category === 'Pets' ? 'Adoption Fee' : 'Price (৳) *'}
+                    {formData.category === "Pets"
+                      ? "Adoption Fee"
+                      : "Price (৳) *"}
                   </label>
                   <div className="relative">
                     <div className="absolute left-3 top-3 text-gray-400">
@@ -180,17 +217,31 @@ const AddListing = () => {
                     <input
                       type="number"
                       name="price"
-                      value={formData.price}
+                      value={parseInt(formData.price)}
                       onChange={handleChange}
-                      disabled={formData.category === 'Pets'}
-                      className={`w-full pl-10 pr-4 py-3 border ${errors.price ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${formData.category === 'Pets' ? 'bg-gray-100 dark:bg-gray-700' : ''}`}
-                      placeholder={formData.category === 'Pets' ? 'Free' : 'Enter price'}
+                      disabled={formData.category === "Pets"}
+                      className={`w-full pl-10 pr-4 py-3 border ${
+                        errors.price
+                          ? "border-red-500"
+                          : "border-gray-300 dark:border-gray-600"
+                      } rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+                        formData.category === "Pets"
+                          ? "bg-gray-100 dark:bg-gray-700"
+                          : ""
+                      }`}
+                      placeholder={
+                        formData.category === "Pets" ? "Free" : "Enter price"
+                      }
                       min="0"
                     />
                   </div>
-                  {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
-                  {formData.category === 'Pets' && (
-                    <p className="text-sm text-gray-500 mt-1">Pets for adoption are free</p>
+                  {errors.price && (
+                    <p className="text-red-500 text-sm mt-1">{errors.price}</p>
+                  )}
+                  {formData.category === "Pets" && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Pets for adoption are free
+                    </p>
                   )}
                 </div>
               </div>
@@ -210,11 +261,19 @@ const AddListing = () => {
                       name="location"
                       value={formData.location}
                       onChange={handleChange}
-                      className={`w-full pl-10 pr-4 py-3 border ${errors.location ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white`}
+                      className={`w-full pl-10 pr-4 py-3 border ${
+                        errors.location
+                          ? "border-red-500"
+                          : "border-gray-300 dark:border-gray-600"
+                      } rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white`}
                       placeholder="Enter location"
                     />
                   </div>
-                  {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
+                  {errors.location && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.location}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -230,11 +289,17 @@ const AddListing = () => {
                       name="date"
                       value={formData.date}
                       onChange={handleChange}
-                      min={new Date().toISOString().split('T')[0]}
-                      className={`w-full pl-10 pr-4 py-3 border ${errors.date ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white`}
+                      min={new Date().toISOString().split("T")[0]}
+                      className={`w-full pl-10 pr-4 py-3 border ${
+                        errors.date
+                          ? "border-red-500"
+                          : "border-gray-300 dark:border-gray-600"
+                      } rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white`}
                     />
                   </div>
-                  {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
+                  {errors.date && (
+                    <p className="text-red-500 text-sm mt-1">{errors.date}</p>
+                  )}
                 </div>
               </div>
 
@@ -252,11 +317,17 @@ const AddListing = () => {
                     name="image"
                     value={formData.image}
                     onChange={handleChange}
-                    className={`w-full pl-10 pr-4 py-3 border ${errors.image ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white`}
+                    className={`w-full pl-10 pr-4 py-3 border ${
+                      errors.image
+                        ? "border-red-500"
+                        : "border-gray-300 dark:border-gray-600"
+                    } rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white`}
                     placeholder="https://example.com/image.jpg"
                   />
                 </div>
-                {errors.image && <p className="text-red-500 text-sm mt-1">{errors.image}</p>}
+                {errors.image && (
+                  <p className="text-red-500 text-sm mt-1">{errors.image}</p>
+                )}
                 <p className="text-sm text-gray-500 mt-1">
                   Use a direct link to a high-quality image
                 </p>
@@ -268,7 +339,8 @@ const AddListing = () => {
                       alt="Preview"
                       className="w-32 h-32 object-cover rounded-lg border"
                       onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/150?text=Invalid+URL';
+                        e.target.src =
+                          "https://via.placeholder.com/150?text=Invalid+URL";
                       }}
                     />
                   </div>
@@ -285,10 +357,18 @@ const AddListing = () => {
                   value={formData.description}
                   onChange={handleChange}
                   rows="4"
-                  className={`w-full px-4 py-3 border ${errors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white`}
+                  className={`w-full px-4 py-3 border ${
+                    errors.description
+                      ? "border-red-500"
+                      : "border-gray-300 dark:border-gray-600"
+                  } rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white`}
                   placeholder="Describe your pet or product in detail..."
                 />
-                {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+                {errors.description && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.description}
+                  </p>
+                )}
               </div>
 
               {/* Owner Info (Readonly) */}
@@ -299,7 +379,9 @@ const AddListing = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-500">Name</p>
-                    <p className="font-medium">{user?.displayName || 'Not available'}</p>
+                    <p className="font-medium">
+                      {user?.displayName || "Not available"}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Email</p>
@@ -321,7 +403,7 @@ const AddListing = () => {
                       Creating Listing...
                     </div>
                   ) : (
-                    'Create Listing'
+                    "Create Listing"
                   )}
                 </button>
               </div>

@@ -1,11 +1,21 @@
-
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FaEdit, FaTrash, FaEye, FaPlus, FaChartLine, FaDollarSign, FaMapMarkerAlt, FaCalendarAlt } from 'react-icons/fa';
-import toast from 'react-hot-toast';
-import LoadingSpinner from '../components/LoadingSpinner';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  FaEdit,
+  FaTrash,
+  FaEye,
+  FaPlus,
+  FaChartLine,
+  FaDollarSign,
+  FaMapMarkerAlt,
+  FaCalendarAlt,
+  FaHeart,
+} from "react-icons/fa";
+import { listingsAPI } from "../api/apiService";
+import toast from "react-hot-toast";
+import LoadingSpinner from "../components/LoadingSpinner";
+import { Link } from "react-router-dom";
 
 const MyListings = () => {
   const { user } = useAuth();
@@ -15,50 +25,50 @@ const MyListings = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [listingToDelete, setListingToDelete] = useState(null);
-
-  useEffect(() => {
-    fetchMyListings();
-  }, []);
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    totalValue: 0,
+    freeAdoptions: 0,
+  });
 
   const fetchMyListings = async () => {
-    setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        const mockListings = [
-          { 
-            _id: '1', 
-            name: "Golden Retriever Puppy", 
-            category: "Pets", 
-            price: 0, 
-            location: "Dhaka", 
-            description: "Friendly 2-month-old puppy looking for a loving home.",
-            image: "https://images.unsplash.com/photo-1596492784531-6e6eb5ea9993?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-            date: "2024-01-15",
-            email: user?.email,
-            status: "active"
-          },
-          { 
-            _id: '2', 
-            name: "Premium Dog Food", 
-            category: "Food", 
-            price: 1200, 
-            location: "Chattogram", 
-            description: "High-quality dog food for all breeds.",
-            image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-            date: "2024-01-10",
-            email: user?.email,
-            status: "active"
-          }
-        ];
-        setListings(mockListings);
-        setLoading(false);
-      }, 1000);
+      if (!user?.email) return;
+      setLoading(true);
+      const response = await listingsAPI.getMyListings(user.email);
+      setListings(response.listings || []);
+
+      // Calculate stats
+      const total = response.listings.length;
+      const active = response.listings.filter(
+        (l) => l.status === "available"
+      ).length;
+      const totalValue = response.listings.reduce(
+        (sum, listing) => sum + listing.price,
+        0
+      );
+      const freeAdoptions = response.listings.filter(
+        (l) => l.price === 0 && l.category === "Pets"
+      ).length;
+
+      setStats({ total, active, totalValue, freeAdoptions });
     } catch (error) {
-      toast.error('Failed to load your listings');
+      toast.error("Failed to load your listings");
+    } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!user?.email) {
+      fetchMyListings();
+    }
+  }, [user]);
+
+  listings.map((listing) => {
+    console.log(listing.name);
+  });
 
   const handleEdit = (listing) => {
     setEditingListing({ ...listing });
@@ -70,17 +80,20 @@ const MyListings = () => {
     if (!editingListing) return;
 
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setListings(prev => prev.map(listing => 
-          listing._id === editingListing._id ? editingListing : listing
-        ));
-        toast.success('Listing updated successfully!');
-        setShowEditModal(false);
-        setEditingListing(null);
-      }, 1000);
+      const response = await listingsAPI.update(
+        editingListing._id,
+        editingListing
+      );
+      setListings((prev) =>
+        prev.map((listing) =>
+          listing._id === editingListing._id ? response.listing : listing
+        )
+      );
+      toast.success("Listing updated successfully!");
+      setShowEditModal(false);
+      setEditingListing(null);
     } catch (error) {
-      toast.error('Failed to update listing');
+      toast.error("Failed to update listing");
     }
   };
 
@@ -93,29 +106,84 @@ const MyListings = () => {
     if (!listingToDelete) return;
 
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setListings(prev => prev.filter(listing => listing._id !== listingToDelete._id));
-        toast.success('Listing deleted successfully!');
-        setShowDeleteModal(false);
-        setListingToDelete(null);
-      }, 1000);
+      await listingsAPI.delete(listingToDelete._id);
+      setListings((prev) =>
+        prev.filter((listing) => listing._id !== listingToDelete._id)
+      );
+      toast.success("Listing deleted successfully!");
+      setShowDeleteModal(false);
+      setListingToDelete(null);
+
+      // Update stats
+      setStats((prev) => ({
+        ...prev,
+        total: prev.total - 1,
+        active:
+          listingToDelete.status === "available"
+            ? prev.active - 1
+            : prev.active,
+        totalValue: prev.totalValue - listingToDelete.price,
+        freeAdoptions:
+          listingToDelete.price === 0 && listingToDelete.category === "Pets"
+            ? prev.freeAdoptions - 1
+            : prev.freeAdoptions,
+      }));
     } catch (error) {
-      toast.error('Failed to delete listing');
+      toast.error("Failed to delete listing");
+    }
+  };
+
+  const handleStatusChange = async (listingId, newStatus) => {
+    try {
+      const updatedListing = { status: newStatus };
+      const response = await listingsAPI.update(listingId, updatedListing);
+
+      setListings((prev) =>
+        prev.map((listing) =>
+          listing._id === listingId ? response.data.listing : listing
+        )
+      );
+
+      // Update stats
+      const listing = listings.find((l) => l._id === listingId);
+      if (listing) {
+        setStats((prev) => ({
+          ...prev,
+          active:
+            listing.status === "available" && newStatus !== "available"
+              ? prev.active - 1
+              : listing.status !== "available" && newStatus === "available"
+              ? prev.active + 1
+              : prev.active,
+        }));
+      }
+
+      toast.success(`Listing marked as ${newStatus}`);
+    } catch (error) {
+      toast.error("Failed to update listing status");
     }
   };
 
   const formatPrice = (price) => {
-    return price === 0 ? 'Free' : `৳${price}`;
+    return price === 0 ? "Free" : `৳${price.toLocaleString()}`;
   };
 
   const getStatusColor = (status) => {
     const colors = {
-      active: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-      pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-      sold: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+      available:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+      pending:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+      sold: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
+      adopted:
+        "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
     };
-    return colors[status] || colors.active;
+    return colors[status] || colors.available;
+  };
+
+  const getStatusOptions = (currentStatus) => {
+    const allOptions = ["available", "pending", "sold", "adopted"];
+    return allOptions.filter((option) => option !== currentStatus);
   };
 
   return (
@@ -146,8 +214,10 @@ const MyListings = () => {
             <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Listings</p>
-                  <p className="text-2xl font-bold mt-1">{listings.length}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Total Listings
+                  </p>
+                  <p className="text-2xl font-bold mt-1">{stats.total}</p>
                 </div>
                 <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
                   <FaChartLine className="text-purple-600 dark:text-purple-300 text-xl" />
@@ -158,10 +228,10 @@ const MyListings = () => {
             <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Active</p>
-                  <p className="text-2xl font-bold mt-1">
-                    {listings.filter(l => l.status === 'active').length}
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Active
                   </p>
+                  <p className="text-2xl font-bold mt-1">{stats.active}</p>
                 </div>
                 <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
                   <FaEye className="text-green-600 dark:text-green-300 text-xl" />
@@ -172,9 +242,11 @@ const MyListings = () => {
             <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Value</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Total Value
+                  </p>
                   <p className="text-2xl font-bold mt-1">
-                    ৳{listings.reduce((sum, listing) => sum + listing.price, 0)}
+                    ৳{stats.totalValue.toLocaleString()}
                   </p>
                 </div>
                 <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
@@ -186,13 +258,15 @@ const MyListings = () => {
             <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Free Adoptions</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Free Adoptions
+                  </p>
                   <p className="text-2xl font-bold mt-1">
-                    {listings.filter(l => l.price === 0).length}
+                    {stats.freeAdoptions}
                   </p>
                 </div>
                 <div className="p-3 bg-pink-100 dark:bg-pink-900 rounded-lg">
-                  <FaPlus className="text-pink-600 dark:text-pink-300 text-xl" />
+                  <FaHeart className="text-pink-600 dark:text-pink-300 text-xl" />
                 </div>
               </div>
             </div>
@@ -239,12 +313,6 @@ const MyListings = () => {
                       Price
                     </th>
                     <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Location
-                    </th>
-                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Date
-                    </th>
-                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Status
                     </th>
                     <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -274,41 +342,62 @@ const MyListings = () => {
                               <p className="font-medium text-gray-900 dark:text-white">
                                 {listing.name}
                               </p>
-                              <p className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">
-                                {listing.description.substring(0, 50)}...
-                              </p>
+                              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                                <FaMapMarkerAlt />
+                                {listing.location}
+                              </div>
                             </div>
                           </div>
                         </td>
                         <td className="py-4 px-6">
                           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                            {listing.category === 'Pets' ? '🐶' : 
-                             listing.category === 'Food' ? '🍖' :
-                             listing.category === 'Accessories' ? '🧸' : '💊'}
-                            {listing.category}
+                            {listing.category.slug === "pets"
+                              ? "🐶"
+                              : listing.category.slug === "food"
+                              ? "🍖"
+                              : listing.category.slug === "Accessories"
+                              ? "🧸"
+                              : "💊"}
+                            {listing.category.slug}
                           </span>
                         </td>
                         <td className="py-4 px-6">
-                          <span className={`font-bold ${listing.price === 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-white'}`}>
+                          <span
+                            className={`font-bold ${
+                              listing.price === 0
+                                ? "text-green-600 dark:text-green-400"
+                                : "text-gray-900 dark:text-white"
+                            }`}
+                          >
                             {formatPrice(listing.price)}
                           </span>
                         </td>
                         <td className="py-4 px-6">
-                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                            <FaMapMarkerAlt />
-                            {listing.location}
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-gray-600 dark:text-gray-400">
                           <div className="flex items-center gap-2">
-                            <FaCalendarAlt />
-                            {new Date(listing.date).toLocaleDateString()}
+                            <span
+                              className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
+                                listing.status
+                              )}`}
+                            >
+                              {listing.status.charAt(0).toUpperCase() +
+                                listing.status.slice(1)}
+                            </span>
+                            <select
+                              value={listing.status}
+                              onChange={(e) =>
+                                handleStatusChange(listing._id, e.target.value)
+                              }
+                              className="text-sm border rounded px-2 py-1 bg-transparent"
+                            >
+                              {getStatusOptions(listing.status).map(
+                                (option) => (
+                                  <option key={option} value={option}>
+                                    Mark as {option}
+                                  </option>
+                                )
+                              )}
+                            </select>
                           </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(listing.status)}`}>
-                            {listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}
-                          </span>
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
@@ -359,21 +448,53 @@ const MyListings = () => {
                 <h3 className="text-2xl font-bold mb-4">Edit Listing</h3>
                 <form onSubmit={handleUpdate} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Name</label>
+                    <label className="block text-sm font-medium mb-2">
+                      Name
+                    </label>
                     <input
                       type="text"
                       value={editingListing.name}
-                      onChange={(e) => setEditingListing({...editingListing, name: e.target.value})}
+                      onChange={(e) =>
+                        setEditingListing({
+                          ...editingListing,
+                          name: e.target.value,
+                        })
+                      }
                       className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Price</label>
+                    <label className="block text-sm font-medium mb-2">
+                      Price
+                    </label>
                     <input
                       type="number"
                       value={editingListing.price}
-                      onChange={(e) => setEditingListing({...editingListing, price: e.target.value})}
+                      onChange={(e) =>
+                        setEditingListing({
+                          ...editingListing,
+                          price: e.target.value,
+                        })
+                      }
                       className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      value={editingListing.description}
+                      onChange={(e) =>
+                        setEditingListing({
+                          ...editingListing,
+                          description: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
+                      rows="3"
                     />
                   </div>
                   <div className="flex gap-3 pt-4">
@@ -414,7 +535,8 @@ const MyListings = () => {
                 </div>
                 <h3 className="text-lg font-bold mb-2">Delete Listing</h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  Are you sure you want to delete "{listingToDelete.name}"? This action cannot be undone.
+                  Are you sure you want to delete "{listingToDelete.name}"? This
+                  action cannot be undone.
                 </p>
                 <div className="flex gap-3">
                   <button

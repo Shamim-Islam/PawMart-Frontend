@@ -1,11 +1,27 @@
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { motion } from "framer-motion";
+import {
+  FaMapMarkerAlt,
+  FaCalendarAlt,
+  FaTag,
+  FaEnvelope,
+  FaPhone,
+  FaHome,
+  FaPaw,
+  FaHeart,
+} from "react-icons/fa";
+import { listingsAPI, ordersAPI } from "../api/apiService";
+import toast from "react-hot-toast";
+import LoadingSpinner from "../components/LoadingSpinner";
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { motion } from 'framer-motion';
-import { FaMapMarkerAlt, FaCalendarAlt, FaTag, FaEnvelope, FaPhone, FaHome, FaPaw } from 'react-icons/fa';
-import toast from 'react-hot-toast';
-import LoadingSpinner from '../components/LoadingSpinner';
+const categoryIconMap = {
+  pets: "🐶",
+  food: "🍖",
+  accessories: "🧸",
+  "pet-care-product": "💊",
+};
 
 const ListingDetails = () => {
   const { id } = useParams();
@@ -14,17 +30,20 @@ const ListingDetails = () => {
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
   const [orderForm, setOrderForm] = useState({
-    buyerName: '',
-    email: '',
-    productId: '',
-    productName: '',
+    productId: "",
     quantity: 1,
-    price: 0,
-    address: '',
-    phone: '',
-    date: new Date().toISOString().split('T')[0],
-    additionalNotes: ''
+    address: {
+      street: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "Bangladesh",
+    },
+    phone: "",
+    pickupDate: new Date().toISOString().split("T")[0],
+    additionalNotes: "",
   });
 
   useEffect(() => {
@@ -32,85 +51,132 @@ const ListingDetails = () => {
   }, [id]);
 
   useEffect(() => {
+    if (listing) {
+      checkIfLiked();
+    }
+  }, [listing]);
+
+  useEffect(() => {
     if (user && listing) {
-      setOrderForm(prev => ({
+      setOrderForm((prev) => ({
         ...prev,
-        buyerName: user.displayName || '',
-        email: user.email || '',
-        productId: listing._id || id,
-        productName: listing.name,
-        price: listing.price,
-        quantity: listing.category === 'Pets' ? 1 : prev.quantity
+        productId: listing._id,
+        quantity: listing.category.slug === "pets" ? 1 : prev.quantity,
+        pickupDate: listing.pickupDate
+          ? new Date(listing.pickupDate).toISOString().split("T")[0]
+          : prev.pickupDate,
       }));
     }
-  }, [user, listing, id]);
+  }, [user, listing]);
 
   const fetchListing = async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        const mockListing = {
-          _id: id,
-          name: "Golden Retriever Puppy",
-          category: "Pets",
-          price: 0,
-          location: "Dhaka",
-          description: "Friendly 2-month-old puppy looking for a loving home. Vaccinated and healthy. Loves to play and is great with children.",
-          image: "https://images.unsplash.com/photo-1596492784531-6e6eb5ea9993?ixlib=rb-1.2.1&auto=format&fit=crop&w=1200&q=80",
-          email: "owner@example.com",
-          date: "2024-01-15",
-          additionalInfo: "Comes with vaccination records and starter kit",
-          age: "2 months",
-          breed: "Golden Retriever",
-          ownerName: "John Doe",
-          ownerPhone: "01712345678"
-        };
-        setListing(mockListing);
-        setLoading(false);
-      }, 1000);
+      const response = await listingsAPI.getById(id);
+      setListing(response);
     } catch (error) {
-      toast.error('Failed to load listing details');
+      console.error("Error fetching listing:", error);
+      toast.error("Failed to load listing details");
+    } finally {
       setLoading(false);
+    }
+  };
+
+  const checkIfLiked = async () => {
+    if (!user || !listing) return;
+
+    try {
+      const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      const favorites = userData.favorites || [];
+      setIsLiked(favorites.includes(id));
+    } catch (error) {
+      console.error("Error checking like status:", error);
+    }
+  };
+
+  const handleToggleLike = async () => {
+    if (!user) {
+      toast.error("Please login to like listings");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      await listingsAPI.toggleLike(id);
+      setIsLiked(!isLiked);
+      toast.success(isLiked ? "Removed from favorites" : "Added to favorites");
+    } catch (error) {
+      console.error("Error toggling like:", error);
     }
   };
 
   const handleOrderSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate form
-    if (!orderForm.address.trim()) {
-      toast.error('Please enter delivery address');
+
+    if (!user) {
+      toast.error("Please login to place an order");
+      navigate("/login");
       return;
     }
-    
+
+    // Validate form
+    if (!orderForm.address.street.trim()) {
+      toast.error("Please enter street address");
+      return;
+    }
+
+    if (!orderForm.address.city.trim()) {
+      toast.error("Please enter city");
+      return;
+    }
+
+    if (!orderForm.address.state.trim()) {
+      toast.error("Please enter state");
+      return;
+    }
+
+    if (!orderForm.address.zipCode.trim()) {
+      toast.error("Please enter zip code");
+      return;
+    }
+
     if (!orderForm.phone.trim()) {
-      toast.error('Please enter phone number');
+      toast.error("Please enter phone number");
       return;
     }
 
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        console.log('Order placed:', orderForm);
-        toast.success('Order placed successfully!');
-        setShowOrderModal(false);
-        setLoading(false);
-        navigate('/my-orders');
-      }, 1500);
+      await ordersAPI.create(orderForm);
+
+      toast.success("Order placed successfully!");
+      setShowOrderModal(false);
+      navigate("/my-orders");
     } catch (error) {
-      toast.error('Failed to place order');
+      console.error("Error placing order:", error);
+    } finally {
       setLoading(false);
     }
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setOrderForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
+
+    if (name.startsWith("address.")) {
+      const addressField = name.split(".")[1];
+      setOrderForm((prev) => ({
+        ...prev,
+        address: {
+          ...prev.address,
+          [addressField]: value,
+        },
+      }));
+    } else {
+      setOrderForm((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   if (loading) {
@@ -127,7 +193,7 @@ const ListingDetails = () => {
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">Listing not found</h2>
           <button
-            onClick={() => navigate('/pets-supplies')}
+            onClick={() => navigate("/pets-supplies")}
             className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg"
           >
             Browse Listings
@@ -148,11 +214,11 @@ const ListingDetails = () => {
           className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden"
         >
           {/* Header */}
-          <div className="relative h-96 overflow-hidden">
+          <div className="relative h-[450px] overflow-hidden">
             <img
               src={listing.image}
               alt={listing.name}
-              className="w-full h-full object-cover"
+              className="w-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent"></div>
             <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
@@ -160,13 +226,13 @@ const ListingDetails = () => {
                 <div>
                   <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-4">
                     <span className="text-xl">
-                      {listing.category === 'Pets' ? '🐶' :
-                       listing.category === 'Food' ? '🍖' :
-                       listing.category === 'Accessories' ? '🧸' : '💊'}
+                      {categoryIconMap[listing.category.slug] || "📦"}
                     </span>
-                    <span className="font-medium">{listing.category}</span>
+                    <span className="font-medium">{listing.category.slug}</span>
                   </div>
-                  <h1 className="text-4xl md:text-5xl font-bold mb-2">{listing.name}</h1>
+                  <h1 className="text-4xl md:text-5xl font-bold mb-2">
+                    {listing.name}
+                  </h1>
                   <div className="flex items-center gap-6">
                     <div className="flex items-center gap-2">
                       <FaMapMarkerAlt />
@@ -174,8 +240,20 @@ const ListingDetails = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <FaCalendarAlt />
-                      <span>Available: {new Date(listing.date).toLocaleDateString()}</span>
+                      <span>
+                        {listing.pickupDate
+                          ? `Available: ${new Date(
+                              listing.pickupDate
+                            ).toLocaleDateString()}`
+                          : "Available now"}
+                      </span>
                     </div>
+                    {listing.views && (
+                      <div className="flex items-center gap-2">
+                        <FaEye className="text-sm" />
+                        <span>{listing.views} views</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
@@ -184,14 +262,35 @@ const ListingDetails = () => {
                       <span className="text-green-300">Free Adoption</span>
                     ) : (
                       <>
-                        <span className="text-yellow-300">৳{listing.price}</span>
-                        <span className="text-lg text-gray-300 ml-2">each</span>
+                        <span className="text-yellow-300">
+                          ৳{listing.price?.toLocaleString()}
+                        </span>
+                        {listing.category.slug !== "pets" && (
+                          <span className="text-lg text-gray-300 ml-2">
+                            each
+                          </span>
+                        )}
                       </>
                     )}
                   </div>
-                  {!isFree && listing.category === 'Pets' && (
-                    <p className="text-gray-300">Adoption fee covers vaccinations</p>
-                  )}
+                  <div className="flex items-center gap-4 justify-end">
+                    <button
+                      onClick={handleToggleLike}
+                      className="flex items-center gap-2 text-white hover:text-pink-300 transition-colors"
+                    >
+                      <FaHeart
+                        className={`text-xl ${
+                          isLiked ? "text-pink-500 fill-pink-500" : ""
+                        }`}
+                      />
+                      <span>{listing.likes?.length || 0}</span>
+                    </button>
+                    {!isFree && listing.category.slug === "pets" && (
+                      <p className="text-gray-300">
+                        Adoption fee covers vaccinations
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -208,31 +307,6 @@ const ListingDetails = () => {
                     {listing.description}
                   </p>
                 </div>
-
-                {listing.additionalInfo && (
-                  <div className="mb-8">
-                    <h3 className="text-xl font-semibold mb-3">Additional Information</h3>
-                    <p className="text-gray-600 dark:text-gray-400">
-                      {listing.additionalInfo}
-                    </p>
-                  </div>
-                )}
-
-                {/* Features */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                  {listing.age && (
-                    <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Age</p>
-                      <p className="text-lg font-semibold">{listing.age}</p>
-                    </div>
-                  )}
-                  {listing.breed && (
-                    <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Breed</p>
-                      <p className="text-lg font-semibold">{listing.breed}</p>
-                    </div>
-                  )}
-                </div>
               </div>
 
               {/* Sidebar */}
@@ -244,23 +318,33 @@ const ListingDetails = () => {
                     Owner Information
                   </h3>
                   <div className="space-y-4">
+                    {listing.owner?.name && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Name
+                        </p>
+                        <p className="font-medium">
+                          {listing.owner?.name || "Not available"}
+                        </p>
+                      </div>
+                    )}
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
-                      <p className="font-medium">{listing.ownerName || 'Not specified'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Email
+                      </p>
                       <p className="font-medium flex items-center gap-2">
                         <FaEnvelope className="text-gray-400" />
-                        {listing.email}
+                        {listing.owner?.email}
                       </p>
                     </div>
-                    {listing.ownerPhone && (
+                    {listing.owner?.phone && (
                       <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Phone
+                        </p>
                         <p className="font-medium flex items-center gap-2">
                           <FaPhone className="text-gray-400" />
-                          {listing.ownerPhone}
+                          {listing.owner.phone}
                         </p>
                       </div>
                     )}
@@ -271,29 +355,33 @@ const ListingDetails = () => {
                 <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl p-6 text-white">
                   <h3 className="text-xl font-bold mb-4">Interested?</h3>
                   <p className="mb-6">
-                    {isFree 
-                      ? 'Give this pet a loving home! Contact the owner or place an adoption request.'
-                      : 'Ready to get this product? Place your order now!'
-                    }
+                    {isFree
+                      ? "Give this pet a loving home! Contact the owner or place an adoption request."
+                      : "Ready to get this product? Place your order now!"}
                   </p>
-                  
+
                   <div className="space-y-4">
                     <button
-                      onClick={() => setShowOrderModal(true)}
+                      onClick={() =>
+                        user ? setShowOrderModal(true) : navigate("/login")
+                      }
                       className="w-full bg-white hover:bg-gray-100 text-purple-600 font-bold py-4 px-6 rounded-lg text-lg transition-all duration-300 transform hover:scale-105"
                     >
-                      {isFree ? 'Adopt Now' : 'Order Now'}
+                      {isFree ? "Adopt Now" : "Order Now"}
                     </button>
-                    
-                    <button className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm py-3 px-6 rounded-lg font-medium transition-colors">
+
+                    <a
+                      href={`mailto:${listing.owner?.email}?subject=Regarding ${listing.owner?.name} on PawMart`}
+                      className="w-full block text-center bg-white/20 hover:bg-white/30 backdrop-blur-sm py-3 px-6 rounded-lg font-medium transition-colors"
+                    >
                       Contact Owner
-                    </button>
+                    </a>
                   </div>
 
                   <div className="mt-6 pt-6 border-t border-white/30">
                     <p className="text-sm opacity-90">
                       <FaTag className="inline mr-2" />
-                      {isFree ? 'No adoption fee' : 'Secure payment'}
+                      {isFree ? "No adoption fee" : "Secure payment"}
                     </p>
                     <p className="text-sm opacity-90 mt-2">
                       <FaHome className="inline mr-2" />
@@ -320,7 +408,7 @@ const ListingDetails = () => {
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h3 className="text-2xl font-bold">
-                    {isFree ? 'Adoption Request' : 'Place Order'}
+                    {isFree ? "Adoption Request" : "Place Order"}
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400">
                     {listing.name}
@@ -336,112 +424,141 @@ const ListingDetails = () => {
 
               <form onSubmit={handleOrderSubmit} className="space-y-4">
                 {/* Product Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Product Name</label>
-                    <input
-                      type="text"
-                      value={orderForm.productName}
-                      readOnly
-                      className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Price</label>
-                    <input
-                      type="text"
-                      value={isFree ? 'Free' : `৳${orderForm.price}`}
-                      readOnly
-                      className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg"
-                    />
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Product Name</p>
+                      <p className="font-medium">{listing.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Price</p>
+                      <p className="font-medium">
+                        {isFree
+                          ? "Free"
+                          : `৳${listing.price?.toLocaleString()}`}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
                 {/* Quantity (only for non-pets) */}
-                {listing.category !== 'Pets' && (
+                {listing.category.slug !== "pets" && (
                   <div>
-                    <label className="block text-sm font-medium mb-2">Quantity</label>
+                    <label className="block text-sm font-medium mb-2">
+                      Quantity *
+                    </label>
                     <input
                       type="number"
                       name="quantity"
                       value={orderForm.quantity}
                       onChange={handleInputChange}
                       min="1"
+                      max={listing.quantity || 1}
                       className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
                     />
+                    <p className="text-sm text-gray-500 mt-1">
+                      Maximum available: {listing.quantity || 1}
+                    </p>
                   </div>
                 )}
-
-                {/* Buyer Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Your Name</label>
-                    <input
-                      type="text"
-                      name="buyerName"
-                      value={orderForm.buyerName}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Email</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={orderForm.email}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
-                      required
-                    />
-                  </div>
-                </div>
 
                 {/* Contact Info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Phone *</label>
+                    <label className="block text-sm font-medium mb-2">
+                      Phone *
+                    </label>
                     <input
                       type="tel"
                       name="phone"
                       value={orderForm.phone}
                       onChange={handleInputChange}
                       className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
+                      placeholder="017XXXXXXXX"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Pick-up Date</label>
+                    <label className="block text-sm font-medium mb-2">
+                      Pick-up Date *
+                    </label>
                     <input
                       type="date"
-                      name="date"
-                      value={orderForm.date}
+                      name="pickupDate"
+                      value={orderForm.pickupDate}
                       onChange={handleInputChange}
-                      min={new Date().toISOString().split('T')[0]}
+                      min={new Date().toISOString().split("T")[0]}
                       className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
                       required
                     />
                   </div>
                 </div>
 
-                {/* Address */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">Address *</label>
-                  <textarea
-                    name="address"
-                    value={orderForm.address}
-                    onChange={handleInputChange}
-                    rows="3"
-                    className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
-                    placeholder="Enter delivery address or meeting location"
-                    required
-                  />
+                {/* Address Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Street *
+                    </label>
+                    <input
+                      type="text"
+                      name="address.street"
+                      value={orderForm.address.street}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
+                      placeholder="House #, Road #"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      City *
+                    </label>
+                    <input
+                      type="text"
+                      name="address.city"
+                      value={orderForm.address.city}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
+                      placeholder="City name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      State *
+                    </label>
+                    <input
+                      type="text"
+                      name="address.state"
+                      value={orderForm.address.state}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
+                      placeholder="State/Division"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Zip Code *
+                    </label>
+                    <input
+                      type="text"
+                      name="address.zipCode"
+                      value={orderForm.address.zipCode}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
+                      placeholder="Postal code"
+                      required
+                    />
+                  </div>
                 </div>
 
                 {/* Additional Notes */}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Additional Notes</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Additional Notes
+                  </label>
                   <textarea
                     name="additionalNotes"
                     value={orderForm.additionalNotes}
@@ -465,9 +582,9 @@ const ListingDetails = () => {
                         Processing...
                       </div>
                     ) : isFree ? (
-                      'Submit Adoption Request'
+                      "Submit Adoption Request"
                     ) : (
-                      'Confirm Order'
+                      "Confirm Order"
                     )}
                   </button>
                 </div>

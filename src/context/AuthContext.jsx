@@ -1,16 +1,15 @@
-
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { auth } from '../firebase/firebase.config';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
+import React, { createContext, useState, useEffect, useContext } from "react";
+import { auth } from "../firebase/firebase.config";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
-  updateProfile
-} from 'firebase/auth';
-import toast from 'react-hot-toast';
+  updateProfile,
+} from "firebase/auth";
+import toast from "react-hot-toast";
 
 const AuthContext = createContext();
 
@@ -30,12 +29,16 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (name, email, password, photoURL) => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
       await updateProfile(userCredential.user, {
         displayName: name,
-        photoURL: photoURL || 'https://via.placeholder.com/150'
+        photoURL: photoURL || "https://via.placeholder.com/150",
       });
-      toast.success('Registration successful!');
+      toast.success("Registration successful!");
       return userCredential.user;
     } catch (error) {
       toast.error(error.message);
@@ -45,8 +48,12 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      toast.success('Login successful!');
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      toast.success("Login successful!");
       return userCredential.user;
     } catch (error) {
       toast.error(error.message);
@@ -58,7 +65,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const provider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
-      toast.success('Google login successful!');
+      toast.success("Google login successful!");
       return userCredential.user;
     } catch (error) {
       toast.error(error.message);
@@ -69,7 +76,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await signOut(auth);
-      toast.success('Logged out successfully!');
+      toast.success("Logged out successfully!");
     } catch (error) {
       toast.error(error.message);
     }
@@ -81,12 +88,10 @@ export const AuthProvider = ({ children }) => {
     register,
     login,
     googleLogin,
-    logout
+    logout,
   };
+  const storedUser = localStorage.getItem("user");
+  console.log("AUTH USER:", storedUser);
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

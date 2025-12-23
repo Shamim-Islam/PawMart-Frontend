@@ -10,187 +10,97 @@ import {
 } from "react-icons/fa";
 import ListingCard from "../components/ListingCard";
 import LoadingSpinner from "../components/LoadingSpinner";
-import toast from "react-hot-toast";
+import { listingsAPI } from "../api/apiService";
 
 const PetsSupplies = () => {
-  const { categoryName } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const [listings, setListings] = useState([]);
   const [filteredListings, setFilteredListings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const categoryFromURL = searchParams.get("category");
+  const [searchTerm, setSearchTerm] = useState(
+    searchParams.get("search") || ""
+  );
+
+  const [selectedCategory, setSelectedCategory] = useState(
+    categoryFromURL || "all"
+  );
+
   const [priceRange, setPriceRange] = useState([0, 10000]);
   const [showFilters, setShowFilters] = useState(false);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 12,
+  });
 
   const categories = [
     { value: "all", label: "All Categories", icon: "📦" },
     { value: "pets", label: "Pets (Adoption)", icon: "🐶" },
-    { value: "food", label: "Pet Food", icon: "🍖" },
+    { value: "pet-food", label: "Pet Food", icon: "🍖" },
     { value: "accessories", label: "Accessories", icon: "🧸" },
-    { value: "care", label: "Care Products", icon: "💊" },
+    { value: "pet-care-products", label: "Pet Care Products", icon: "💊" },
   ];
 
   useEffect(() => {
-    // Set initial category from URL
-    if (categoryName) {
-      setSelectedCategory(categoryName);
+    if (categoryFromURL) {
+      setSelectedCategory(categoryFromURL);
     }
-  }, [categoryName]);
+  }, [categoryFromURL]);
 
   useEffect(() => {
     fetchListings();
-  }, []);
-
-  useEffect(() => {
-    filterListings();
-  }, [listings, searchTerm, selectedCategory, priceRange]);
+  }, [selectedCategory, searchTerm, priceRange, pagination.currentPage]);
 
   const fetchListings = async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        const mockListings = [
-          {
-            id: 1,
-            name: "Golden Retriever Puppy",
-            category: "Pets",
-            price: 0,
-            location: "Dhaka",
-            image:
-              "https://images.unsplash.com/photo-1611003229186-80e40cd54966?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-            description:
-              "Friendly 2-month-old puppy looking for a loving home.",
-          },
-          {
-            id: 2,
-            name: "Premium Dog Food",
-            category: "Food",
-            price: 1200,
-            location: "Chattogram",
-            image:
-              "https://images.unsplash.com/photo-1608408891486-f5cade977d19?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-            description: "High-quality dog food for all breeds.",
-          },
-          {
-            id: 3,
-            name: "Pet Carrier Bag",
-            category: "Accessories",
-            price: 2500,
-            location: "Sylhet",
-            image:
-              "https://images.unsplash.com/photo-1608060375223-c5ab552bc9a9?q=80&w=2081&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-            description: "Comfortable pet carrier for travel.",
-          },
-          {
-            id: 4,
-            name: "Cat Litter Box",
-            category: "Care",
-            price: 1800,
-            location: "Dhaka",
-            image:
-              "https://images.unsplash.com/photo-1727510152683-a212cf8e49ad?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-            description: "Modern cat litter box with odor control.",
-          },
-          {
-            id: 5,
-            name: "Siamese Kitten",
-            category: "Pets",
-            price: 0,
-            location: "Khulna",
-            image:
-              "https://images.wagwalkingweb.com/media/daily_wag/blog_articles/hero/1678934108.5188236/everything-you-need-to-know-about-siamese-cats.png",
-            description: "Beautiful Siamese kitten ready for adoption.",
-          },
-          {
-            id: 6,
-            name: "Dog Toys Set",
-            category: "Accessories",
-            price: 850,
-            location: "Rajshahi",
-            image:
-              "https://images.unsplash.com/photo-1554456854-55a089fd4cb2?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-            description: "Set of 5 durable dog toys.",
-          },
-          {
-            id: 7,
-            name: "Fish Tank",
-            category: "Care",
-            price: 3500,
-            location: "Dhaka",
-            image:
-              "https://images.unsplash.com/photo-1578313097818-dfe8d38aa758?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-            description: "20-gallon fish tank with filter.",
-          },
-          {
-            id: 8,
-            name: "Bird Cage",
-            category: "Accessories",
-            price: 2200,
-            location: "Chattogram",
-            image:
-              "https://plus.unsplash.com/premium_photo-1664304957188-a2f67dd1f721?q=80&w=739&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-            description: "Spacious bird cage with accessories.",
-          },
-          {
-            id: 9,
-            name: "Rabbit Hutch",
-            category: "Accessories",
-            price: 4200,
-            location: "Sylhet",
-            image:
-              "https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-            description: "Outdoor rabbit hutch with weather protection.",
-          },
-        ];
-        setListings(mockListings);
-        setFilteredListings(mockListings);
-        setLoading(false);
-      }, 1500);
+      const params = {
+        page: pagination.currentPage,
+        limit: pagination.itemsPerPage,
+        status: "available",
+      };
+
+      if (selectedCategory !== "all") {
+        params.category = selectedCategory;
+      }
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+
+      if (priceRange[0] > 0 || priceRange[1] < 10000) {
+        params.minPrice = priceRange[0];
+        params.maxPrice = priceRange[1];
+      }
+
+      const response = await listingsAPI.getAll(params);
+      setListings(response.data.listings);
+      setFilteredListings(response.data.listings);
+      setPagination(response.data.pagination);
     } catch (error) {
-      toast.error("Failed to load listings");
+      console.error("Error fetching listings:", error);
+    } finally {
       setLoading(false);
     }
   };
 
-  const filterListings = () => {
-    let filtered = [...listings];
-
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (listing) =>
-          listing.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          listing.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Filter by category
-    if (selectedCategory !== "all") {
-      const categoryMap = {
-        pets: "Pets",
-        food: "Food",
-        accessories: "Accessories",
-        care: "Care",
-      };
-      filtered = filtered.filter(
-        (listing) => listing.category === categoryMap[selectedCategory]
-      );
-    }
-
-    // Filter by price range
-    filtered = filtered.filter(
-      (listing) =>
-        listing.price >= priceRange[0] && listing.price <= priceRange[1]
-    );
-
-    setFilteredListings(filtered);
-  };
-
   const handleSearch = (e) => {
     e.preventDefault();
-    filterListings();
+    setSearchParams({ search: searchTerm });
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+    fetchListings();
+  };
+
+  const handleCategoryChange = (category) => {
+    setSelectedCategory(category);
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+  };
+
+  const handlePriceRangeChange = (min, max) => {
+    setPriceRange([min, max]);
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
   const clearFilters = () => {
@@ -198,6 +108,12 @@ const PetsSupplies = () => {
     setSelectedCategory("all");
     setPriceRange([0, 10000]);
     setSearchParams({});
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+  };
+
+  const handlePageChange = (page) => {
+    setPagination((prev) => ({ ...prev, currentPage: page }));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -277,7 +193,7 @@ const PetsSupplies = () => {
                       {categories.map((cat) => (
                         <button
                           key={cat.value}
-                          onClick={() => setSelectedCategory(cat.value)}
+                          onClick={() => handleCategoryChange(cat.value)}
                           className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                             selectedCategory === cat.value
                               ? "bg-blue-500 text-white"
@@ -304,10 +220,10 @@ const PetsSupplies = () => {
                         step="100"
                         value={priceRange[0]}
                         onChange={(e) =>
-                          setPriceRange([
+                          handlePriceRangeChange(
                             parseInt(e.target.value),
-                            priceRange[1],
-                          ])
+                            priceRange[1]
+                          )
                         }
                         className="w-full"
                       />
@@ -318,10 +234,10 @@ const PetsSupplies = () => {
                         step="100"
                         value={priceRange[1]}
                         onChange={(e) =>
-                          setPriceRange([
+                          handlePriceRangeChange(
                             priceRange[0],
-                            parseInt(e.target.value),
-                          ])
+                            parseInt(e.target.value)
+                          )
                         }
                         className="w-full"
                       />
@@ -362,13 +278,13 @@ const PetsSupplies = () => {
                 : "All Listings"}
             </h2>
             <p className="text-gray-600 dark:text-gray-400">
-              {filteredListings.length} listings found
+              {pagination.totalItems} listings found
             </p>
           </div>
           <div className="text-sm text-gray-500">
             {selectedCategory !== "all" && (
               <button
-                onClick={() => setSelectedCategory("all")}
+                onClick={() => handleCategoryChange("all")}
                 className="text-blue-500 hover:text-blue-600"
               >
                 View all categories →
@@ -401,21 +317,84 @@ const PetsSupplies = () => {
             </button>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <AnimatePresence>
-              {filteredListings.map((listing, index) => (
-                <motion.div
-                  key={listing.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <ListingCard listing={listing} />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <AnimatePresence>
+                {filteredListings.map((listing, index) => (
+                  <motion.div
+                    key={listing._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <ListingCard listing={listing} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="mt-12 flex justify-center">
+                <nav className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(pagination.currentPage - 1)}
+                    disabled={pagination.currentPage === 1}
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 dark:hover:bg-gray-600"
+                  >
+                    Previous
+                  </button>
+
+                  {[...Array(pagination.totalPages)].map((_, index) => {
+                    const page = index + 1;
+                    const isCurrent = page === pagination.currentPage;
+                    const showPage =
+                      page === 1 ||
+                      page === pagination.totalPages ||
+                      (page >= pagination.currentPage - 1 &&
+                        page <= pagination.currentPage + 1);
+
+                    if (!showPage) {
+                      if (
+                        page === pagination.currentPage - 2 ||
+                        page === pagination.currentPage + 2
+                      ) {
+                        return (
+                          <span key={page} className="px-2">
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
+                    }
+
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`px-4 py-2 rounded-lg ${
+                          isCurrent
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    onClick={() => handlePageChange(pagination.currentPage + 1)}
+                    disabled={pagination.currentPage === pagination.totalPages}
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 dark:hover:bg-gray-600"
+                  >
+                    Next
+                  </button>
+                </nav>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -12,6 +12,7 @@ import {
 } from "react-icons/fa";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { ordersAPI } from "../api/apiService";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../components/LoadingSpinner";
 
@@ -21,66 +22,36 @@ const MyOrders = () => {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    pendingOrders: 0,
+    completedOrders: 0,
+    totalSpent: 0,
+  });
 
   useEffect(() => {
     fetchMyOrders();
+    fetchOrderStats();
   }, []);
 
   const fetchMyOrders = async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        const mockOrders = [
-          {
-            _id: "1",
-            productId: "123",
-            productName: "Golden Retriever Puppy",
-            buyerName: "John Doe",
-            email: user?.email,
-            quantity: 1,
-            price: 0,
-            address: "123 Main St, Dhaka",
-            phone: "01712345678",
-            date: "2024-01-15",
-            additionalNotes: "Please have vaccination records ready",
-            status: "completed",
-          },
-          {
-            _id: "2",
-            productId: "124",
-            productName: "Premium Dog Food",
-            buyerName: "Jane Smith",
-            email: user?.email,
-            quantity: 2,
-            price: 1200,
-            address: "456 Park Ave, Chattogram",
-            phone: "01898765432",
-            date: "2024-01-10",
-            additionalNotes: "Need delivery before weekend",
-            status: "pending",
-          },
-          {
-            _id: "3",
-            productId: "125",
-            productName: "Pet Carrier Bag",
-            buyerName: "Bob Johnson",
-            email: user?.email,
-            quantity: 1,
-            price: 2500,
-            address: "789 Lake Road, Sylhet",
-            phone: "01945678901",
-            date: "2024-01-05",
-            additionalNotes: "",
-            status: "cancelled",
-          },
-        ];
-        setOrders(mockOrders);
-        setLoading(false);
-      }, 1000);
+      const response = await ordersAPI.getMyOrders();
+      setOrders(response.data.orders);
     } catch (error) {
       toast.error("Failed to load orders");
+    } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchOrderStats = async () => {
+    try {
+      const response = await ordersAPI.getStats();
+      setStats(response.data);
+    } catch (error) {
+      console.error("Error fetching order stats:", error);
     }
   };
 
@@ -89,6 +60,15 @@ const MyOrders = () => {
       pending: {
         color:
           "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+        icon: FaClock,
+      },
+      confirmed: {
+        color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+        icon: FaCheckCircle,
+      },
+      processing: {
+        color:
+          "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
         icon: FaClock,
       },
       completed: {
@@ -113,8 +93,12 @@ const MyOrders = () => {
     );
   };
 
-  const calculateTotal = (order) => {
-    return order.quantity * order.price;
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
   };
 
   const generatePDF = () => {
@@ -127,27 +111,28 @@ const MyOrders = () => {
     // Info
     doc.setFontSize(12);
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 32);
-    doc.text(`Customer: ${user?.displayName || "User"}`, 14, 38);
+    doc.text(`Customer: ${user?.name || "User"}`, 14, 38);
+    doc.text(`Email: ${user?.email || ""}`, 14, 44);
 
     // Table
     autoTable(doc, {
-      startY: 45,
+      startY: 50,
       head: [
         ["Order ID", "Product", "Quantity", "Price", "Total", "Date", "Status"],
       ],
       body: orders.map((order) => [
-        order._id,
+        order._id.substring(0, 8),
         order.productName,
         order.quantity,
         `৳${order.price}`,
-        `৳${calculateTotal(order)}`,
-        new Date(order.date).toLocaleDateString(),
+        `৳${order.totalAmount}`,
+        formatDate(order.createdAt),
         order.status.toUpperCase(),
       ]),
       theme: "grid",
       headStyles: { fillColor: [79, 70, 229] },
       styles: { fontSize: 10 },
-      margin: { top: 45 },
+      margin: { top: 50 },
     });
 
     // Summary
@@ -155,30 +140,93 @@ const MyOrders = () => {
     doc.setFontSize(12);
     doc.text("Summary:", 14, finalY);
 
-    const totalOrders = orders.length;
-    const totalAmount = orders.reduce(
-      (sum, order) => sum + calculateTotal(order),
-      0
+    doc.text(`Total Orders: ${stats.totalOrders}`, 14, finalY + 8);
+    doc.text(`Completed Orders: ${stats.completedOrders}`, 14, finalY + 16);
+    doc.text(`Pending Orders: ${stats.pendingOrders}`, 14, finalY + 24);
+    doc.text(
+      `Total Amount: ৳${stats.totalSpent.toLocaleString()}`,
+      14,
+      finalY + 32
     );
-    const completedOrders = orders.filter(
-      (o) => o.status === "completed"
-    ).length;
-
-    doc.text(`Total Orders: ${totalOrders}`, 14, finalY + 8);
-    doc.text(`Completed Orders: ${completedOrders}`, 14, finalY + 16);
-    doc.text(`Total Amount: ৳${totalAmount}`, 14, finalY + 24);
 
     // Footer
     doc.setFontSize(10);
-    doc.text("Thank you for using PawMart!", 14, finalY + 36);
+    doc.text("Thank you for using PawMart!", 14, finalY + 44);
+    doc.text(
+      "Contact: support@pawmart.com | Phone: +880 17XX-XXXXXX",
+      14,
+      finalY + 50
+    );
 
     doc.save(`pawmart-orders-${new Date().toISOString().split("T")[0]}.pdf`);
     toast.success("PDF report downloaded successfully!");
   };
 
-  const viewOrderDetails = (order) => {
-    setSelectedOrder(order);
-    setShowOrderDetails(true);
+  const viewOrderDetails = async (order) => {
+    try {
+      const response = await ordersAPI.getById(order._id);
+      setSelectedOrder(response.data.order);
+      setShowOrderDetails(true);
+    } catch (error) {
+      toast.error("Failed to load order details");
+    }
+  };
+
+  const handleStatusUpdate = async (orderId, newStatus) => {
+    try {
+      await ordersAPI.updateStatus(orderId, newStatus);
+
+      // Update local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId ? { ...order, status: newStatus } : order
+        )
+      );
+
+      if (selectedOrder && selectedOrder._id === orderId) {
+        setSelectedOrder((prev) => ({ ...prev, status: newStatus }));
+      }
+
+      // Update stats
+      if (newStatus === "completed") {
+        setStats((prev) => ({
+          ...prev,
+          completedOrders: prev.completedOrders + 1,
+          pendingOrders: prev.pendingOrders - 1,
+        }));
+      }
+
+      toast.success(`Order marked as ${newStatus}`);
+    } catch (error) {
+      toast.error("Failed to update order status");
+    }
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    try {
+      await ordersAPI.cancel(orderId);
+
+      // Update local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId ? { ...order, status: "cancelled" } : order
+        )
+      );
+
+      if (selectedOrder && selectedOrder._id === orderId) {
+        setSelectedOrder((prev) => ({ ...prev, status: "cancelled" }));
+      }
+
+      // Update stats
+      setStats((prev) => ({
+        ...prev,
+        pendingOrders: prev.pendingOrders - 1,
+      }));
+
+      toast.success("Order cancelled successfully");
+    } catch (error) {
+      toast.error("Failed to cancel order");
+    }
   };
 
   return (
@@ -213,7 +261,7 @@ const MyOrders = () => {
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Total Orders
                   </p>
-                  <p className="text-2xl font-bold mt-1">{orders.length}</p>
+                  <p className="text-2xl font-bold mt-1">{stats.totalOrders}</p>
                 </div>
                 <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
                   <FaFilePdf className="text-blue-600 dark:text-blue-300 text-xl" />
@@ -228,11 +276,7 @@ const MyOrders = () => {
                     Total Amount
                   </p>
                   <p className="text-2xl font-bold mt-1">
-                    ৳
-                    {orders.reduce(
-                      (sum, order) => sum + order.quantity * order.price,
-                      0
-                    )}
+                    ৳{stats.totalSpent.toLocaleString()}
                   </p>
                 </div>
                 <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
@@ -248,7 +292,7 @@ const MyOrders = () => {
                     Completed
                   </p>
                   <p className="text-2xl font-bold mt-1">
-                    {orders.filter((o) => o.status === "completed").length}
+                    {stats.completedOrders}
                   </p>
                 </div>
                 <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
@@ -264,7 +308,7 @@ const MyOrders = () => {
                     Pending
                   </p>
                   <p className="text-2xl font-bold mt-1">
-                    {orders.filter((o) => o.status === "pending").length}
+                    {stats.pendingOrders}
                   </p>
                 </div>
                 <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
@@ -300,13 +344,10 @@ const MyOrders = () => {
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Order ID
-                    </th>
-                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Product
                     </th>
                     <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Buyer
+                      Seller
                     </th>
                     <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Quantity
@@ -334,45 +375,80 @@ const MyOrders = () => {
                       transition={{ delay: index * 0.05 }}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
-                      <td className="py-4 px-6 font-mono text-sm text-gray-600 dark:text-gray-400">
-                        #{order._id}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          {order.productId?.mainImage && (
+                            <img
+                              src={order.productId.mainImage}
+                              alt={order.productName}
+                              className="w-10 h-10 rounded-lg object-cover"
+                            />
+                          )}
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {order.productName}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              ৳{order.price} per item
+                            </p>
+                          </div>
+                        </div>
                       </td>
                       <td className="py-4 px-6">
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {order.productName}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          ৳{order.price} per item
-                        </p>
-                      </td>
-                      <td className="py-4 px-6">
-                        <p className="font-medium">{order.buyerName}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {order.phone}
-                        </p>
+                        {order.seller ? (
+                          <>
+                            <p className="font-medium">{order.seller.name}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              {order.seller.phone || order.seller.email}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-gray-500">N/A</p>
+                        )}
                       </td>
                       <td className="py-4 px-6">
                         <span className="font-medium">{order.quantity}</span>
                       </td>
                       <td className="py-4 px-6">
                         <span className="font-bold text-lg">
-                          ৳{calculateTotal(order)}
+                          ৳{order.totalAmount?.toLocaleString()}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-gray-600 dark:text-gray-400">
-                        {new Date(order.date).toLocaleDateString()}
+                        {formatDate(order.createdAt)}
                       </td>
                       <td className="py-4 px-6">
                         {getStatusBadge(order.status)}
                       </td>
                       <td className="py-4 px-6">
-                        <button
-                          onClick={() => viewOrderDetails(order)}
-                          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                        >
-                          <FaEye />
-                          View
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => viewOrderDetails(order)}
+                            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                          >
+                            <FaEye />
+                            View
+                          </button>
+
+                          {order.status === "pending" && (
+                            <>
+                              <button
+                                onClick={() =>
+                                  handleStatusUpdate(order._id, "confirmed")
+                                }
+                                className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 text-sm"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => handleCancelOrder(order._id)}
+                                className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </motion.tr>
                   ))}
@@ -397,7 +473,7 @@ const MyOrders = () => {
                 <div>
                   <h3 className="text-2xl font-bold">Order Details</h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Order ID: #{selectedOrder._id}
+                    Order ID: {selectedOrder._id.substring(0, 12)}...
                   </p>
                 </div>
                 <button
@@ -433,7 +509,7 @@ const MyOrders = () => {
                       <div>
                         <span className="text-sm text-gray-500">Total:</span>
                         <p className="font-bold text-lg">
-                          ৳{calculateTotal(selectedOrder)}
+                          ৳{selectedOrder.totalAmount}
                         </p>
                       </div>
                     </div>
@@ -459,7 +535,7 @@ const MyOrders = () => {
                           Order Date:
                         </span>
                         <p className="font-medium">
-                          {new Date(selectedOrder.date).toLocaleDateString()}
+                          {formatDate(selectedOrder.createdAt)}
                         </p>
                       </div>
                     </div>
@@ -472,7 +548,21 @@ const MyOrders = () => {
                   <div className="space-y-2">
                     <div>
                       <span className="text-sm text-gray-500">Address:</span>
-                      <p className="font-medium">{selectedOrder.address}</p>
+                      <p className="font-medium">
+                        {selectedOrder.address.street},{" "}
+                        {selectedOrder.address.city},
+                        {selectedOrder.address.state}{" "}
+                        {selectedOrder.address.zipCode},
+                        {selectedOrder.address.country}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500">
+                        Pickup Date:
+                      </span>
+                      <p className="font-medium">
+                        {formatDate(selectedOrder.pickupDate)}
+                      </p>
                     </div>
                     <div>
                       <span className="text-sm text-gray-500">Status:</span>
@@ -503,10 +593,22 @@ const MyOrders = () => {
                   </button>
                   {selectedOrder.status === "pending" && (
                     <>
-                      <button className="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-medium transition-colors">
-                        Mark as Completed
+                      <button
+                        onClick={() => {
+                          handleStatusUpdate(selectedOrder._id, "confirmed");
+                          setShowOrderDetails(false);
+                        }}
+                        className="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+                      >
+                        Mark as Confirmed
                       </button>
-                      <button className="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-lg font-medium transition-colors">
+                      <button
+                        onClick={() => {
+                          handleCancelOrder(selectedOrder._id);
+                          setShowOrderDetails(false);
+                        }}
+                        className="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+                      >
                         Cancel Order
                       </button>
                     </>
