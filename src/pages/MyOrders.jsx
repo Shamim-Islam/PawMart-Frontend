@@ -30,15 +30,18 @@ const MyOrders = () => {
   });
 
   useEffect(() => {
-    fetchMyOrders();
-    fetchOrderStats();
-  }, []);
+  if (user?.email) {
+    fetchMyOrders(user?.email);
+    fetchOrderStats(user?.email);
+  }
+}, [user]);
 
-  const fetchMyOrders = async () => {
+
+  const fetchMyOrders = async (email) => {
     setLoading(true);
     try {
-      const response = await ordersAPI.getMyOrders();
-      setOrders(response.data.orders);
+      const response = await ordersAPI.getMyOrders(email);
+      setOrders(response.orders);
     } catch (error) {
       toast.error("Failed to load orders");
     } finally {
@@ -46,14 +49,14 @@ const MyOrders = () => {
     }
   };
 
-  const fetchOrderStats = async () => {
-    try {
-      const response = await ordersAPI.getStats();
-      setStats(response.data);
-    } catch (error) {
-      console.error("Error fetching order stats:", error);
-    }
-  };
+  const fetchOrderStats = async (email) => {
+  try {
+    const data = await ordersAPI.getStats(email);
+    setStats(data);
+  } catch (error) {
+    console.error("Error fetching order stats:", error);
+  }
+};
 
   const getStatusBadge = (status) => {
     const config = {
@@ -124,8 +127,8 @@ const MyOrders = () => {
         order._id.substring(0, 8),
         order.productName,
         order.quantity,
-        `৳${order.price}`,
-        `৳${order.totalAmount}`,
+        `৳ ${order.price}`,
+        `৳ ${order.price * order.quantity}`,
         formatDate(order.createdAt),
         order.status.toUpperCase(),
       ]),
@@ -144,7 +147,7 @@ const MyOrders = () => {
     doc.text(`Completed Orders: ${stats.completedOrders}`, 14, finalY + 16);
     doc.text(`Pending Orders: ${stats.pendingOrders}`, 14, finalY + 24);
     doc.text(
-      `Total Amount: ৳${stats.totalSpent.toLocaleString()}`,
+      `Total Amount: ৳ ${stats.totalSpent.toLocaleString()}`,
       14,
       finalY + 32
     );
@@ -411,7 +414,7 @@ const MyOrders = () => {
                       </td>
                       <td className="py-4 px-6">
                         <span className="font-bold text-lg">
-                          ৳{order.totalAmount?.toLocaleString()}
+                          ৳{order.price * order.quantity?.toLocaleString()}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-gray-600 dark:text-gray-400">

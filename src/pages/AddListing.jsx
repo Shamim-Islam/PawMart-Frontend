@@ -19,13 +19,12 @@ const AddListing = () => {
   const [formData, setFormData] = useState({
     name: "",
     category: "Pets",
-    price: "",
+    price: 0,
     location: "",
     description: "",
     image: "",
     date: new Date().toISOString().split("T")[0],
   });
-  console.log(formData);
 
   const [errors, setErrors] = useState({});
 

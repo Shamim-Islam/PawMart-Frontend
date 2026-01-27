@@ -15,10 +15,12 @@ import {
 import { listingsAPI } from "../api/apiService";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import axios from "axios";
 
 const MyListings = () => {
   const { user } = useAuth();
+  const { id } = useParams();
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingListing, setEditingListing] = useState(null);
@@ -37,20 +39,21 @@ const MyListings = () => {
       if (!user?.email) return;
       setLoading(true);
       const response = await listingsAPI.getMyListings(user.email);
-      setListings(response.listings || []);
 
-      // Calculate stats
-      const total = response.listings.length;
-      const active = response.listings.filter(
-        (l) => l.status === "available"
-      ).length;
-      const totalValue = response.listings.reduce(
-        (sum, listing) => sum + listing.price,
-        0
-      );
-      const freeAdoptions = response.listings.filter(
-        (l) => l.price === 0 && l.category === "Pets"
-      ).length;
+      setListings(response || []);
+
+      //state counting calculation
+      const total = response?.length || 0;
+      const active =
+        response?.filter((l) => l.status === "Available").length || 0;
+      const totalValue =
+        response?.reduce((sum, listing) => sum + (listing.price || 0), 0) || 0;
+      const freeAdoptions =
+        response?.filter(
+          (l) =>
+            (l.price === 0 || l.price === "0") &&
+            (l.category?.name === "Pets" || l.category?.slug === "pets")
+        ).length || 0;
 
       setStats({ total, active, totalValue, freeAdoptions });
     } catch (error) {
@@ -61,39 +64,83 @@ const MyListings = () => {
   };
 
   useEffect(() => {
-    if (!user?.email) {
+    if (user?.email) {
       fetchMyListings();
     }
-  }, [user]);
-
-  listings.map((listing) => {
-    console.log(listing.name);
-  });
+  }, [user?.email]);
 
   const handleEdit = (listing) => {
     setEditingListing({ ...listing });
     setShowEditModal(true);
   };
 
+  // const handleUpdate = async (e) => {
+  //   e.preventDefault();
+  //   if (!editingListing) return;
+  //   console.log(editingListing);
+  //   try {
+  //     // 1. API call
+  //     await listingsAPI.update(editingListing._id, {
+  //       name: editingListing.name,
+  //       price: Number(editingListing.price),
+  //       location: editingListing.location,
+  //       image: editingListing.image,
+  //       description: editingListing.description,
+  //     });
+
+  //     // 2. Modal close
+  //     setShowEditModal(false);
+  //     setEditingListing(null);
+
+  //     // 3. Refresh the listings (simple solution)
+  //     setTimeout(() => {
+  //       fetchMyListings();
+  //     }, 500);
+
+  //     toast.success("Updated successfully!");
+  //   } catch (error) {
+  //     console.error("Error:", error);
+  //     toast.error("Update failed!");
+  //   }
+  // };
+
   const handleUpdate = async (e) => {
     e.preventDefault();
     if (!editingListing) return;
-
+    console.log(editingListing);
     try {
-      const response = await listingsAPI.update(
-        editingListing._id,
-        editingListing
+      const updatedListing = {
+        name: editingListing.name,
+        price: Number(editingListing.price),
+        location: editingListing.location,
+        image: editingListing.image,
+        description: editingListing.description,
+      };
+
+      axios.put(
+        `http://localhost:5000/update/${editingListing._id}`,
+        updatedListing
       );
-      setListings((prev) =>
-        prev.map((listing) =>
-          listing._id === editingListing._id ? response.listing : listing
-        )
-      );
-      toast.success("Listing updated successfully!");
+      // .then((res) => {
+      //   console.log(res.data);
+      // })
+      // .catch((err) => {
+      //   console.log(err);
+      // });
+
+      // 2. Modal close
       setShowEditModal(false);
       setEditingListing(null);
+
+      // 3. Refresh the listings (simple solution)
+      setTimeout(() => {
+        fetchMyListings();
+      }, 500);
+
+      toast.success("Updated successfully!");
     } catch (error) {
-      toast.error("Failed to update listing");
+      console.error("Error:", error);
+      toast.error("Update failed!");
     }
   };
 
@@ -119,7 +166,7 @@ const MyListings = () => {
         ...prev,
         total: prev.total - 1,
         active:
-          listingToDelete.status === "available"
+          listingToDelete.status === "Available"
             ? prev.active - 1
             : prev.active,
         totalValue: prev.totalValue - listingToDelete.price,
@@ -138,34 +185,39 @@ const MyListings = () => {
       const updatedListing = { status: newStatus };
       const response = await listingsAPI.update(listingId, updatedListing);
 
-      setListings((prev) =>
-        prev.map((listing) =>
+      setListings((prev) => {
+        const newListings = prev.map((listing) =>
           listing._id === listingId ? response.data.listing : listing
-        )
-      );
+        );
 
-      // Update stats
-      const listing = listings.find((l) => l._id === listingId);
-      if (listing) {
-        setStats((prev) => ({
-          ...prev,
-          active:
-            listing.status === "available" && newStatus !== "available"
-              ? prev.active - 1
-              : listing.status !== "available" && newStatus === "available"
-              ? prev.active + 1
-              : prev.active,
-        }));
-      }
+        // Recalculate stats
+        const total = newListings.length;
+        const active = newListings.filter(
+          (l) => l.status === "Available"
+        ).length;
+        const totalValue = newListings.reduce(
+          (sum, listing) => sum + (listing.price || 0),
+          0
+        );
+        const freeAdoptions = newListings.filter(
+          (l) =>
+            (l.price === 0 || l.price === "0") &&
+            (l.category?.name === "Pets" || l.category?.slug === "pets")
+        ).length;
+
+        setStats({ total, active, totalValue, freeAdoptions });
+
+        return newListings;
+      });
 
       toast.success(`Listing marked as ${newStatus}`);
     } catch (error) {
       toast.error("Failed to update listing status");
     }
   };
-
   const formatPrice = (price) => {
-    return price === 0 ? "Free" : `৳${price.toLocaleString()}`;
+    if (price === null || price === undefined) return "N/A";
+    return Number(price).toLocaleString();
   };
 
   const getStatusColor = (status) => {
@@ -351,14 +403,14 @@ const MyListings = () => {
                         </td>
                         <td className="py-4 px-6">
                           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                            {listing.category.slug === "pets"
-                              ? "🐶"
-                              : listing.category.slug === "food"
-                              ? "🍖"
-                              : listing.category.slug === "Accessories"
-                              ? "🧸"
-                              : "💊"}
-                            {listing.category.slug}
+                            {listing.category?.slug === "pets"
+                              ? "🐶 "
+                              : listing.category?.slug === "pet-food"
+                              ? " 🍖 "
+                              : listing.category?.slug === "accessories"
+                              ? "🧸 "
+                              : "💊 "}
+                            {listing.category?.slug}
                           </span>
                         </td>
                         <td className="py-4 px-6">
@@ -379,8 +431,10 @@ const MyListings = () => {
                                 listing.status
                               )}`}
                             >
-                              {listing.status.charAt(0).toUpperCase() +
-                                listing.status.slice(1)}
+                              {(listing.status || "Available")
+                                .charAt(0)
+                                .toUpperCase() +
+                                (listing.status || "Available").slice(1)}
                             </span>
                             <select
                               value={listing.status}
@@ -449,7 +503,7 @@ const MyListings = () => {
                 <form onSubmit={handleUpdate} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">
-                      Name
+                      Product / Pet Name
                     </label>
                     <input
                       type="text"
@@ -483,6 +537,42 @@ const MyListings = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">
+                      Location
+                    </label>
+                    <input
+                      type="text"
+                      value={editingListing.location}
+                      onChange={(e) =>
+                        setEditingListing({
+                          ...editingListing,
+                          location: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Image URL
+                    </label>
+                    <input
+                      type="text"
+                      value={editingListing.image}
+                      onChange={(e) =>
+                        setEditingListing({
+                          ...editingListing,
+                          image: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
                       Description
                     </label>
                     <textarea
@@ -496,6 +586,10 @@ const MyListings = () => {
                       className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
                       rows="3"
                     />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Email</p>
+                    <p className="font-medium">{user?.email}</p>
                   </div>
                   <div className="flex gap-3 pt-4">
                     <button

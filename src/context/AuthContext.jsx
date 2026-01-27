@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }) => {
     logout,
   };
   const storedUser = localStorage.getItem("user");
-  console.log("AUTH USER:", storedUser);
+  // console.log("AUTH USER:", storedUser);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -141,11 +141,6 @@ export const listingsAPI = {
     return response.data;
   },
 
-  update: async (id, listingData) => {
-    const response = await api.put(`/listing/${id}`, listingData);
-    return response.data;
-  },
-
   delete: async (id) => {
     const response = await api.delete(`/listing/${id}`);
     return response.data;
@@ -153,11 +148,15 @@ export const listingsAPI = {
 
   getMyListings: async (email) => {
     const response = await api.get(`/my-listings?email=${email}`);
-    return response.data;
+    const listingsData = response.data.listings;
+    // console.log(response.data.listings);
+    return listingsData;
   },
 
-  toggleLike: async (id) => {
-    const response = await api.post(`/listing/${id}/like`);
+  toggleLike: async (id, userEmail) => {
+    const response = await api.post(`/listing/${id}/like`, {
+      userEmail,
+    });
     return response.data;
   },
 };
@@ -169,8 +168,8 @@ export const ordersAPI = {
     return response.data;
   },
 
-  getMyOrders: async () => {
-    const response = await api.get("/orders/my-orders");
+  getMyOrders: async (email) => {
+    const response = await api.get(`/orders/my-orders?email=${email}`);
     return response.data;
   },
 
@@ -194,8 +193,8 @@ export const ordersAPI = {
     return response.data;
   },
 
-  getStats: async () => {
-    const response = await api.get("/orders/stats");
+  getStats: async (email) => {
+    const response = await api.get(`/orders/stats?email=${email}`);
     return response.data;
   },
 };

@@ -18,7 +18,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 
 const categoryIconMap = {
   pets: "🐶",
-  food: "🍖",
+  "pet-food": "🍖",
   accessories: "🧸",
   "pet-care-product": "💊",
 };
@@ -33,6 +33,9 @@ const ListingDetails = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [orderForm, setOrderForm] = useState({
     productId: "",
+    productName: "",
+    buyerName: "",
+    buyerEmail: "",
     quantity: 1,
     address: {
       street: "",
@@ -61,7 +64,11 @@ const ListingDetails = () => {
       setOrderForm((prev) => ({
         ...prev,
         productId: listing._id,
-        quantity: listing.category.slug === "pets" ? 1 : prev.quantity,
+        productName: listing.name,
+        buyerName: user.displayName,
+        buyerEmail: user.email,
+        price: listing.price,
+        quantity: isPetCategory ? 1 : prev.quantity,
         pickupDate: listing.pickupDate
           ? new Date(listing.pickupDate).toISOString().split("T")[0]
           : prev.pickupDate,
@@ -83,15 +90,11 @@ const ListingDetails = () => {
   };
 
   const checkIfLiked = async () => {
-    if (!user || !listing) return;
-
-    try {
-      const userData = JSON.parse(localStorage.getItem("user") || "{}");
-      const favorites = userData.favorites || [];
-      setIsLiked(favorites.includes(id));
-    } catch (error) {
-      console.error("Error checking like status:", error);
-    }
+    useEffect(() => {
+      if (user && listing) {
+        setIsLiked(listing?.likes?.includes(user?.email));
+      }
+    }, [listing, user]);
   };
 
   const handleToggleLike = async () => {
@@ -102,11 +105,15 @@ const ListingDetails = () => {
     }
 
     try {
-      await listingsAPI.toggleLike(id);
-      setIsLiked(!isLiked);
-      toast.success(isLiked ? "Removed from favorites" : "Added to favorites");
+      const res = await listingsAPI.toggleLike(id, user.email);
+
+      setIsLiked(res.liked);
+      setListing((prev) => ({
+        ...prev,
+        likes: res.likes,
+      }));
     } catch (error) {
-      console.error("Error toggling like:", error);
+      console.error("Like failed", error);
     }
   };
 
@@ -146,6 +153,7 @@ const ListingDetails = () => {
     }
 
     setLoading(true);
+
     try {
       await ordersAPI.create(orderForm);
 
@@ -203,7 +211,9 @@ const ListingDetails = () => {
     );
   }
 
-  const isFree = listing.price === 0;
+  const isFree = listing?.price === 0;
+
+  const isPetCategory = listing?.category?.slug === "pets";
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4">
@@ -216,8 +226,8 @@ const ListingDetails = () => {
           {/* Header */}
           <div className="relative h-[450px] overflow-hidden">
             <img
-              src={listing.image}
-              alt={listing.name}
+              src={listing?.image}
+              alt={listing?.name}
               className="w-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent"></div>
@@ -226,32 +236,34 @@ const ListingDetails = () => {
                 <div>
                   <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-4">
                     <span className="text-xl">
-                      {categoryIconMap[listing.category.slug] || "📦"}
+                      {categoryIconMap[listing?.category?.slug] || "📦"}
                     </span>
-                    <span className="font-medium">{listing.category.slug}</span>
+                    <span className="font-medium">
+                      {listing?.category?.slug}
+                    </span>
                   </div>
                   <h1 className="text-4xl md:text-5xl font-bold mb-2">
-                    {listing.name}
+                    {listing?.name}
                   </h1>
                   <div className="flex items-center gap-6">
                     <div className="flex items-center gap-2">
                       <FaMapMarkerAlt />
-                      <span>{listing.location}</span>
+                      <span>{listing?.location}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <FaCalendarAlt />
                       <span>
-                        {listing.pickupDate
+                        {listing?.pickupDate
                           ? `Available: ${new Date(
-                              listing.pickupDate
+                              listing?.pickupDate,
                             ).toLocaleDateString()}`
                           : "Available now"}
                       </span>
                     </div>
-                    {listing.views && (
+                    {listing?.views && (
                       <div className="flex items-center gap-2">
                         <FaEye className="text-sm" />
-                        <span>{listing.views} views</span>
+                        <span>{listing?.views} views</span>
                       </div>
                     )}
                   </div>
@@ -263,9 +275,9 @@ const ListingDetails = () => {
                     ) : (
                       <>
                         <span className="text-yellow-300">
-                          ৳{listing.price?.toLocaleString()}
+                          ৳{listing?.price?.toLocaleString()}
                         </span>
-                        {listing.category.slug !== "pets" && (
+                        {listing?.category?.slug !== "pets" && (
                           <span className="text-lg text-gray-300 ml-2">
                             each
                           </span>
@@ -283,9 +295,9 @@ const ListingDetails = () => {
                           isLiked ? "text-pink-500 fill-pink-500" : ""
                         }`}
                       />
-                      <span>{listing.likes?.length || 0}</span>
+                      <span>{listing?.likes?.length || 0}</span>
                     </button>
-                    {!isFree && listing.category.slug === "pets" && (
+                    {!isFree && listing?.category?.slug === "pets" && (
                       <p className="text-gray-300">
                         Adoption fee covers vaccinations
                       </p>
@@ -304,7 +316,7 @@ const ListingDetails = () => {
                 <div className="mb-8">
                   <h2 className="text-2xl font-bold mb-4">Description</h2>
                   <p className="text-gray-700 dark:text-gray-300 text-lg leading-relaxed">
-                    {listing.description}
+                    {listing?.description}
                   </p>
                 </div>
               </div>
@@ -318,13 +330,13 @@ const ListingDetails = () => {
                     Owner Information
                   </h3>
                   <div className="space-y-4">
-                    {listing.owner?.name && (
+                    {listing?.owner?.name && (
                       <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           Name
                         </p>
                         <p className="font-medium">
-                          {listing.owner?.name || "Not available"}
+                          {listing?.owner?.name || "Not available"}
                         </p>
                       </div>
                     )}
@@ -334,17 +346,17 @@ const ListingDetails = () => {
                       </p>
                       <p className="font-medium flex items-center gap-2">
                         <FaEnvelope className="text-gray-400" />
-                        {listing.owner?.email}
+                        {listing?.owner?.email}
                       </p>
                     </div>
-                    {listing.owner?.phone && (
+                    {listing?.owner?.phone && (
                       <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           Phone
                         </p>
                         <p className="font-medium flex items-center gap-2">
                           <FaPhone className="text-gray-400" />
-                          {listing.owner.phone}
+                          {listing?.owner?.phone}
                         </p>
                       </div>
                     )}
@@ -371,7 +383,7 @@ const ListingDetails = () => {
                     </button>
 
                     <a
-                      href={`mailto:${listing.owner?.email}?subject=Regarding ${listing.owner?.name} on PawMart`}
+                      href={`mailto:${listing?.owner?.email}?subject=Regarding ${listing?.owner?.name} on PawMart`}
                       className="w-full block text-center bg-white/20 hover:bg-white/30 backdrop-blur-sm py-3 px-6 rounded-lg font-medium transition-colors"
                     >
                       Contact Owner
@@ -411,7 +423,7 @@ const ListingDetails = () => {
                     {isFree ? "Adoption Request" : "Place Order"}
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {listing.name}
+                    {listing?.name}
                   </p>
                 </div>
                 <button
@@ -428,36 +440,51 @@ const ListingDetails = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-500">Product Name</p>
-                      <p className="font-medium">{listing.name}</p>
+                      <p className="font-medium">{listing?.name}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Price</p>
                       <p className="font-medium">
                         {isFree
                           ? "Free"
-                          : `৳${listing.price?.toLocaleString()}`}
+                          : `৳${listing?.price?.toLocaleString()}`}
                       </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Buyer Name</p>
+                      <p className="font-medium">{user?.displayName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Buyer Email</p>
+                      <p className="font-medium">{user?.email}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Quantity (only for non-pets) */}
-                {listing.category.slug !== "pets" && (
+                {!isPetCategory && (
                   <div>
                     <label className="block text-sm font-medium mb-2">
                       Quantity *
                     </label>
+
                     <input
                       type="number"
                       name="quantity"
+                      min={1}
                       value={orderForm.quantity}
-                      onChange={handleInputChange}
-                      min="1"
-                      max={listing.quantity || 1}
+                      onChange={(e) => {
+                        const value = Number(e.target.value);
+                        setOrderForm((prev) => ({
+                          ...prev,
+                          quantity: value < 1 ? 1 : value,
+                        }));
+                      }}
                       className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700"
                     />
+
                     <p className="text-sm text-gray-500 mt-1">
-                      Maximum available: {listing.quantity || 1}
+                      You can order multiple items
                     </p>
                   </div>
                 )}
