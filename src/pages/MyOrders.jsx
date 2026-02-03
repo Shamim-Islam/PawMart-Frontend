@@ -30,12 +30,11 @@ const MyOrders = () => {
   });
 
   useEffect(() => {
-  if (user?.email) {
-    fetchMyOrders(user?.email);
-    fetchOrderStats(user?.email);
-  }
-}, [user]);
-
+    if (user?.email) {
+      fetchMyOrders(user?.email);
+      fetchOrderStats(user?.email);
+    }
+  }, [user]);
 
   const fetchMyOrders = async (email) => {
     setLoading(true);
@@ -50,13 +49,13 @@ const MyOrders = () => {
   };
 
   const fetchOrderStats = async (email) => {
-  try {
-    const data = await ordersAPI.getStats(email);
-    setStats(data);
-  } catch (error) {
-    console.error("Error fetching order stats:", error);
-  }
-};
+    try {
+      const data = await ordersAPI.getStats(email);
+      setStats(data);
+    } catch (error) {
+      console.error("Error fetching order stats:", error);
+    }
+  };
 
   const getStatusBadge = (status) => {
     const config = {
@@ -149,7 +148,7 @@ const MyOrders = () => {
     doc.text(
       `Total Amount: ৳ ${stats.totalSpent.toLocaleString()}`,
       14,
-      finalY + 32
+      finalY + 32,
     );
 
     // Footer
@@ -158,7 +157,7 @@ const MyOrders = () => {
     doc.text(
       "Contact: support@pawmart.com | Phone: +880 17XX-XXXXXX",
       14,
-      finalY + 50
+      finalY + 50,
     );
 
     doc.save(`pawmart-orders-${new Date().toISOString().split("T")[0]}.pdf`);
@@ -168,8 +167,9 @@ const MyOrders = () => {
   const viewOrderDetails = async (order) => {
     try {
       const response = await ordersAPI.getById(order._id);
-      setSelectedOrder(response.data.order);
+      setSelectedOrder(response);
       setShowOrderDetails(true);
+      console.log("ORDER DETAILS:", response);
     } catch (error) {
       toast.error("Failed to load order details");
     }
@@ -182,21 +182,15 @@ const MyOrders = () => {
       // Update local state
       setOrders((prev) =>
         prev.map((order) =>
-          order._id === orderId ? { ...order, status: newStatus } : order
-        )
+          order._id === orderId ? { ...order, status: newStatus } : order,
+        ),
       );
 
-      if (selectedOrder && selectedOrder._id === orderId) {
-        setSelectedOrder((prev) => ({ ...prev, status: newStatus }));
-      }
+      // re-fetch stats from backend
+      await fetchOrderStats(user.email);
 
-      // Update stats
-      if (newStatus === "completed") {
-        setStats((prev) => ({
-          ...prev,
-          completedOrders: prev.completedOrders + 1,
-          pendingOrders: prev.pendingOrders - 1,
-        }));
+      if (selectedOrder?._id === orderId) {
+        setSelectedOrder((prev) => ({ ...prev, status: newStatus }));
       }
 
       toast.success(`Order marked as ${newStatus}`);
@@ -206,31 +200,31 @@ const MyOrders = () => {
   };
 
   const handleCancelOrder = async (orderId) => {
-    try {
-      await ordersAPI.cancel(orderId);
+  try {
+    await ordersAPI.updateStatus(orderId, "cancelled");
 
-      // Update local state
-      setOrders((prev) =>
-        prev.map((order) =>
-          order._id === orderId ? { ...order, status: "cancelled" } : order
-        )
-      );
+    setOrders((prev) =>
+      prev.map((order) =>
+        order._id === orderId
+          ? { ...order, status: "cancelled" }
+          : order
+      )
+    );
 
-      if (selectedOrder && selectedOrder._id === orderId) {
-        setSelectedOrder((prev) => ({ ...prev, status: "cancelled" }));
-      }
+    // refresh stats
+    await fetchOrderStats(user.email);
 
-      // Update stats
-      setStats((prev) => ({
-        ...prev,
-        pendingOrders: prev.pendingOrders - 1,
-      }));
-
-      toast.success("Order cancelled successfully");
-    } catch (error) {
-      toast.error("Failed to cancel order");
+    // update modal state
+    if (selectedOrder?._id === orderId) {
+      setSelectedOrder((prev) => ({ ...prev, status: "cancelled" }));
     }
-  };
+
+    toast.success("Order cancelled");
+  } catch {
+    toast.error("Cancel failed");
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4">
@@ -414,7 +408,7 @@ const MyOrders = () => {
                       </td>
                       <td className="py-4 px-6">
                         <span className="font-bold text-lg">
-                          ৳{order.price * order.quantity?.toLocaleString()}
+                          ৳{(order.price * order.quantity).toLocaleString()}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-gray-600 dark:text-gray-400">
@@ -463,6 +457,7 @@ const MyOrders = () => {
       </div>
 
       {/* Order Details Modal */}
+
       {showOrderDetails && selectedOrder && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <motion.div
@@ -512,7 +507,10 @@ const MyOrders = () => {
                       <div>
                         <span className="text-sm text-gray-500">Total:</span>
                         <p className="font-bold text-lg">
-                          ৳{selectedOrder.totalAmount}
+                          ৳
+                          {(
+                            selectedOrder.price * selectedOrder.quantity
+                          ).toLocaleString()}
                         </p>
                       </div>
                     </div>
@@ -527,7 +525,9 @@ const MyOrders = () => {
                       </div>
                       <div>
                         <span className="text-sm text-gray-500">Email:</span>
-                        <p className="font-medium">{selectedOrder.email}</p>
+                        <p className="font-medium">
+                          {selectedOrder.buyerEmail}
+                        </p>
                       </div>
                       <div>
                         <span className="text-sm text-gray-500">Phone:</span>

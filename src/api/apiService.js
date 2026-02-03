@@ -23,7 +23,7 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor for error handling
@@ -69,7 +69,7 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 // Auth API
@@ -185,11 +185,6 @@ export const ordersAPI = {
 
   updateStatus: async (id, status) => {
     const response = await api.put(`/orders/${id}/status`, { status });
-    return response.data;
-  },
-
-  cancel: async (id) => {
-    const response = await api.put(`/orders/${id}/cancel`);
     return response.data;
   },
 
